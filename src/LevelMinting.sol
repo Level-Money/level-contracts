@@ -58,10 +58,6 @@ contract LevelMinting is
     bytes32 private constant EIP712_DOMAIN_TYPEHASH =
         keccak256(abi.encodePacked(EIP712_DOMAIN));
 
-    /// @notice address denoting native ether
-    address private constant NATIVE_TOKEN =
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-
     /// @notice EIP712 name
     bytes32 private constant EIP_712_NAME = keccak256("LevelMinting");
 
@@ -285,10 +281,7 @@ contract LevelMinting is
     ) external nonReentrant onlyRole(MINTER_ROLE) {
         if (wallet == address(0) || !_custodianAddresses.contains(wallet))
             revert InvalidAddress();
-        if (asset == NATIVE_TOKEN) {
-            (bool success, ) = wallet.call{value: amount}("");
-            if (!success) revert TransferFailed();
-        } else {
+        else {
             IERC20(asset).safeTransfer(wallet, amount);
         }
         emit CustodyTransfer(wallet, asset, amount);
@@ -504,14 +497,8 @@ contract LevelMinting is
         address asset,
         uint256 amount
     ) internal {
-        if (asset == NATIVE_TOKEN) {
-            if (address(this).balance < amount) revert InvalidAmount();
-            (bool success, ) = (beneficiary).call{value: amount}("");
-            if (!success) revert TransferFailed();
-        } else {
-            if (!_supportedAssets.contains(asset)) revert UnsupportedAsset();
-            IERC20(asset).safeTransfer(beneficiary, amount);
-        }
+        if (!_supportedAssets.contains(asset)) revert UnsupportedAsset();
+        IERC20(asset).safeTransfer(beneficiary, amount);
     }
 
     /// @notice transfer supported asset to array of custody addresses per defined ratio
@@ -523,7 +510,7 @@ contract LevelMinting is
         uint256[] calldata ratios
     ) internal {
         // cannot mint using unsupported asset or native ETH even if it is supported for redemptions
-        if (!_supportedAssets.contains(asset) || asset == NATIVE_TOKEN)
+        if (!_supportedAssets.contains(asset))
             revert UnsupportedAsset();
         IERC20 token = IERC20(asset);
         uint256 totalTransferred = 0;

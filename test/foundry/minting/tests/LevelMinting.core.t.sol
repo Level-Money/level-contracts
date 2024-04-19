@@ -103,7 +103,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             nonce: 800,
             benefactor: benefactor,
             beneficiary: benefactor,
-            collateral_asset: NATIVE_TOKEN,
+            collateral_asset: address(stETHToken),
             lvusd_amount: _lvusdToMint,
             collateral_amount: _stETHToDeposit
         });
@@ -123,9 +123,8 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.startPrank(redeemer);
         LevelMintingContract.redeem(redeemOrder, takerSignature2);
 
-        assertEq(stETHToken.balanceOf(benefactor), 0);
+        assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
         assertEq(lvusdToken.balanceOf(benefactor), 0);
-        assertEq(benefactor.balance, _stETHToDeposit);
 
         vm.stopPrank();
     }
@@ -391,7 +390,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             nonce: 19,
             benefactor: benefactor,
             beneficiary: beneficiary,
-            collateral_asset: NATIVE_TOKEN,
+            collateral_asset: address(token),
             collateral_amount: _stETHToDeposit,
             lvusd_amount: _lvusdToMint
         });
