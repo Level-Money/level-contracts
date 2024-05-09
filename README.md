@@ -96,7 +96,7 @@ There will be a separate deployments of `StakedlvUSD` for each long-tailed basis
 
 ## Freezer
 
-To enable first-loss protection, `StakedlvUSD` allows `lvUSD` to be frozen (withdrawn to a freezer contract and temporarily made unavailable for users to redeem) in the event that the basis trade position backing the value of `lvUSD` declines in value -- this reduces the supply of `lvUSD` in circulation and ensures that its value remains pegged to the dollar. This does not offer absolute protection, but rather offers protection up to the dollar value of staked `lvUSD`. Frozen `lvUSD` will eventually be withdrawn back to the staking contract if the the basis trade position recovers in value or withdrawn to the slasher to be burned and permanently taken out of circulation.
+To enable first-loss protection, `StakedlvUSD` allows `lvUSD` to be frozen (withdrawn to a freezer contract and temporarily made unavailable for users to redeem) in the event that the basis trade position backing the value of `lvUSD` declines in value -- this reduces the supply of `lvUSD` in circulation and ensures that its value remains pegged to the dollar. This does not offer absolute protection, but rather offers protection up to the dollar value of staked `lvUSD`. Frozen `lvUSD` can eventually be withdrawn back to the staking contract if the the basis trade position recovers in value or withdrawn to the slasher to be burned and permanently taken out of circulation.
 
 ## Slasher
 
