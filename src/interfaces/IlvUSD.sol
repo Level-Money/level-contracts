@@ -15,4 +15,6 @@ interface IlvUSD is IERC20, IERC20Permit, IERC20Metadata {
     function grantRole(bytes32 role, address account) external;
 
     function setMinter(address newMinter) external;
+
+    function slasher() external returns (address);
 }

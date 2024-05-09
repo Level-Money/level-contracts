@@ -5,6 +5,11 @@ pragma solidity >=0.8.19;
 interface IlvUSDDefinitions {
     /// @notice This event is fired when the minter changes
     event MinterUpdated(address indexed newMinter, address indexed oldMinter);
+    /// @notice This event is fired when the slasher changes
+    event SlasherUpdated(
+        address indexed newSlasher,
+        address indexed oldSlasher
+    );
 
     /// @notice Zero address not allowed
     error ZeroAddressException();
