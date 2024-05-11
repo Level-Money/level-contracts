@@ -11,13 +11,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import "./interfaces/IlvUSD.sol";
+import "./interfaces/IlvlUSD.sol";
 import "./interfaces/ILevelMinting.sol";
 
 /**
  * @title Level Minting Contract
- * @notice This contract issues and redeems lvUSD for/from other accepted stablecoins
- * @dev Changelog: change name to LevelMinting and lvUSD, update solidity versions
+ * @notice This contract issues and redeems lvlUSD for/from other accepted stablecoins
+ * @dev Changelog: change name to LevelMinting and lvlUSD, update solidity versions
  */
 contract LevelMinting is
     ILevelMinting,
@@ -42,7 +42,7 @@ contract LevelMinting is
     /// @notice order type
     bytes32 private constant ORDER_TYPE =
         keccak256(
-            "Order(uint8 order_type,uint256 expiry,uint256 nonce,address benefactor,address beneficiary,address collateral_asset,uint256 collateral_amount,uint256 lvusd_amount)"
+            "Order(uint8 order_type,uint256 expiry,uint256 nonce,address benefactor,address beneficiary,address collateral_asset,uint256 collateral_amount,uint256 lvlusd_amount)"
         );
 
     /// @notice role enabling to invoke mint
@@ -66,8 +66,8 @@ contract LevelMinting is
 
     /* --------------- STATE VARIABLES --------------- */
 
-    /// @notice lvusd stablecoin
-    IlvUSD public lvusd;
+    /// @notice lvlusd stablecoin
+    IlvlUSD public lvlusd;
 
     /// @notice Supported assets
     EnumerableSet.AddressSet internal _supportedAssets;
@@ -84,31 +84,31 @@ contract LevelMinting is
     /// @notice user deduplication
     mapping(address => mapping(uint256 => uint256)) private _orderBitmaps;
 
-    /// @notice lvUSD minted per block
+    /// @notice lvlUSD minted per block
     mapping(uint256 => uint256) public mintedPerBlock;
-    /// @notice lvUSD redeemed per block
+    /// @notice lvlUSD redeemed per block
     mapping(uint256 => uint256) public redeemedPerBlock;
 
     /// @notice For smart contracts to delegate signing to EOA address
     mapping(address => mapping(address => bool)) public delegatedSigner;
 
-    /// @notice max minted lvUSD allowed per block
+    /// @notice max minted lvlUSD allowed per block
     uint256 public maxMintPerBlock;
-    /// @notice max redeemed lvUSD allowed per block
+    /// @notice max redeemed lvlUSD allowed per block
     uint256 public maxRedeemPerBlock;
 
     /* --------------- MODIFIERS --------------- */
 
-    /// @notice ensure that the already minted lvUSD in the actual block plus the amount to be minted is below the maxMintPerBlock var
-    /// @param mintAmount The lvUSD amount to be minted
+    /// @notice ensure that the already minted lvlUSD in the actual block plus the amount to be minted is below the maxMintPerBlock var
+    /// @param mintAmount The lvlUSD amount to be minted
     modifier belowMaxMintPerBlock(uint256 mintAmount) {
         if (mintedPerBlock[block.number] + mintAmount > maxMintPerBlock)
             revert MaxMintPerBlockExceeded();
         _;
     }
 
-    /// @notice ensure that the already redeemed lvUSD in the actual block plus the amount to be redeemed is below the maxRedeemPerBlock var
-    /// @param redeemAmount The lvUSD amount to be redeemed
+    /// @notice ensure that the already redeemed lvlUSD in the actual block plus the amount to be redeemed is below the maxRedeemPerBlock var
+    /// @param redeemAmount The lvlUSD amount to be redeemed
     modifier belowMaxRedeemPerBlock(uint256 redeemAmount) {
         if (redeemedPerBlock[block.number] + redeemAmount > maxRedeemPerBlock)
             revert MaxRedeemPerBlockExceeded();
@@ -118,17 +118,17 @@ contract LevelMinting is
     /* --------------- CONSTRUCTOR --------------- */
 
     constructor(
-        IlvUSD _lvusd,
+        IlvlUSD _lvlusd,
         address[] memory _assets,
         address[] memory _custodians,
         address _admin,
         uint256 _maxMintPerBlock,
         uint256 _maxRedeemPerBlock
     ) {
-        if (address(_lvusd) == address(0)) revert InvalidlvUSDAddress();
+        if (address(_lvlusd) == address(0)) revert InvalidlvlUSDAddress();
         if (_assets.length == 0) revert NoAssetsProvided();
         if (_admin == address(0)) revert InvalidZeroAddress();
-        lvusd = _lvusd;
+        lvlusd = _lvlusd;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
@@ -151,7 +151,7 @@ contract LevelMinting is
         _chainId = block.chainid;
         _domainSeparator = _computeDomainSeparator();
 
-        emit lvUSDSet(address(_lvusd));
+        emit lvlUSDSet(address(_lvlusd));
     }
 
     /* --------------- EXTERNAL --------------- */
@@ -177,7 +177,7 @@ contract LevelMinting is
         override
         nonReentrant
         onlyRole(MINTER_ROLE)
-        belowMaxMintPerBlock(order.lvusd_amount)
+        belowMaxMintPerBlock(order.lvlusd_amount)
     {
         if (order.order_type != OrderType.MINT) revert InvalidOrder();
         verifyOrder(order, signature);
@@ -185,7 +185,7 @@ contract LevelMinting is
         if (!_deduplicateOrder(order.benefactor, order.nonce))
             revert Duplicate();
         // Add to the minted amount in this block
-        mintedPerBlock[block.number] += order.lvusd_amount;
+        mintedPerBlock[block.number] += order.lvlusd_amount;
         _transferCollateral(
             order.collateral_amount,
             order.collateral_asset,
@@ -193,14 +193,14 @@ contract LevelMinting is
             route.addresses,
             route.ratios
         );
-        lvusd.mint(order.beneficiary, order.lvusd_amount);
+        lvlusd.mint(order.beneficiary, order.lvlusd_amount);
         emit Mint(
             msg.sender,
             order.benefactor,
             order.beneficiary,
             order.collateral_asset,
             order.collateral_amount,
-            order.lvusd_amount
+            order.lvlusd_amount
         );
     }
 
@@ -217,15 +217,15 @@ contract LevelMinting is
         override
         nonReentrant
         onlyRole(REDEEMER_ROLE)
-        belowMaxRedeemPerBlock(order.lvusd_amount)
+        belowMaxRedeemPerBlock(order.lvlusd_amount)
     {
         if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
         verifyOrder(order, signature);
         if (!_deduplicateOrder(order.benefactor, order.nonce))
             revert Duplicate();
         // Add to the redeemed amount in this block
-        redeemedPerBlock[block.number] += order.lvusd_amount;
-        lvusd.burnFrom(order.benefactor, order.lvusd_amount);
+        redeemedPerBlock[block.number] += order.lvlusd_amount;
+        lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
         _transferToBeneficiary(
             order.beneficiary,
             order.collateral_asset,
@@ -237,7 +237,7 @@ contract LevelMinting is
             order.beneficiary,
             order.collateral_asset,
             order.collateral_amount,
-            order.lvusd_amount
+            order.lvlusd_amount
         );
     }
 
@@ -333,7 +333,7 @@ contract LevelMinting is
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         if (
             asset == address(0) ||
-            asset == address(lvusd) ||
+            asset == address(lvlusd) ||
             !_supportedAssets.add(asset)
         ) {
             revert InvalidAssetAddress();
@@ -347,7 +347,7 @@ contract LevelMinting is
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         if (
             custodian == address(0) ||
-            custodian == address(lvusd) ||
+            custodian == address(lvlusd) ||
             !_custodianAddresses.add(custodian)
         ) {
             revert InvalidCustodianAddress();
@@ -389,7 +389,7 @@ contract LevelMinting is
                 order.beneficiary,
                 order.collateral_asset,
                 order.collateral_amount,
-                order.lvusd_amount
+                order.lvlusd_amount
             );
     }
 
@@ -415,7 +415,7 @@ contract LevelMinting is
         ) revert InvalidSignature();
         if (order.beneficiary == address(0)) revert InvalidAmount();
         if (order.collateral_amount == 0) revert InvalidAmount();
-        if (order.lvusd_amount == 0) revert InvalidAmount();
+        if (order.lvlusd_amount == 0) revert InvalidAmount();
         if (block.timestamp > order.expiry) revert SignatureExpired();
         return (true, taker_order_hash);
     }

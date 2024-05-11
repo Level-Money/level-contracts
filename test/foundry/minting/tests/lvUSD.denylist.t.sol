@@ -11,11 +11,11 @@ import {SigUtils} from "../../../utils/SigUtils.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "../../../../src/lvUSD.sol";
+import "../../../../src/lvlUSD.sol";
 import "../LevelMinting.utils.sol";
 
-contract lvUSDDenylistTest is Test, IlvUSDDefinitions, LevelMintingUtils {
-    lvUSD internal _lvusdToken;
+contract lvlUSDDenylistTest is Test, IlvlUSDDefinitions, LevelMintingUtils {
+    lvlUSD internal _lvlusdToken;
 
     uint256 internal _ownerPrivateKey;
     uint256 internal _newOwnerPrivateKey;
@@ -49,91 +49,91 @@ contract lvUSDDenylistTest is Test, IlvUSDDefinitions, LevelMintingUtils {
         vm.label(_newMinter, "_newMinter");
         vm.label(_newOwner, "newOwner");
 
-        _lvusdToken = new lvUSD(_owner);
+        _lvlusdToken = new lvlUSD(_owner);
         vm.prank(_owner);
-        _lvusdToken.setMinter(_minter);
+        _lvlusdToken.setMinter(_minter);
     }
 
     function testDenylisterCannotBeRenounced() public {
         vm.startPrank(_owner);
         vm.expectRevert(OperationNotAllowedErr);
-        _lvusdToken.renounceRole(denylisterRole, _owner);
+        _lvlusdToken.renounceRole(denylisterRole, _owner);
         vm.stopPrank();
-        assertEq(_lvusdToken.owner(), _owner);
-        assertNotEq(_lvusdToken.owner(), address(0));
+        assertEq(_lvlusdToken.owner(), _owner);
+        assertNotEq(_lvlusdToken.owner(), address(0));
     }
 
     function testOnlyDenylisterCanDenylist() public {
-        assertEq(_lvusdToken.denylisted(_denylisted), false);
+        assertEq(_lvlusdToken.denylisted(_denylisted), false);
 
         vm.prank(_denylister);
-        _lvusdToken.addToDenylist(_denylisted);
+        _lvlusdToken.addToDenylist(_denylisted);
 
-        assertEq(_lvusdToken.denylisted(_denylisted), true);
+        assertEq(_lvlusdToken.denylisted(_denylisted), true);
 
         vm.prank(_denylisted);
         vm.expectRevert(_getInvalidRoleError(denylisterRole, _denylisted));
-        _lvusdToken.addToDenylist(_minter);
+        _lvlusdToken.addToDenylist(_minter);
     }
 
     function testOnlyDenylisterCanRemoveFromDenylist() public {
-        assertEq(_lvusdToken.denylisted(_denylisted), false);
+        assertEq(_lvlusdToken.denylisted(_denylisted), false);
 
         vm.prank(_denylister);
-        _lvusdToken.addToDenylist(_denylisted);
-        assertEq(_lvusdToken.denylisted(_denylisted), true);
+        _lvlusdToken.addToDenylist(_denylisted);
+        assertEq(_lvlusdToken.denylisted(_denylisted), true);
 
         vm.prank(_denylisted);
         vm.expectRevert(_getInvalidRoleError(denylisterRole, _denylisted));
-        _lvusdToken.removeFromDenylist(_minter);
+        _lvlusdToken.removeFromDenylist(_minter);
 
         vm.prank(_denylister);
-        _lvusdToken.removeFromDenylist(_denylisted);
-        assertEq(_lvusdToken.denylisted(_denylisted), false);
+        _lvlusdToken.removeFromDenylist(_denylisted);
+        assertEq(_lvlusdToken.denylisted(_denylisted), false);
     }
 
     function cannotAddOwnerToDenylist() public {
         vm.prank(_denylister);
         vm.expectRevert(IsOwnerErr);
-        _lvusdToken.addToDenylist(_owner);
+        _lvlusdToken.addToDenylist(_owner);
     }
 
     function testDenylistPreventMinting() public {
-        assertEq(_lvusdToken.denylisted(_denylisted), false);
+        assertEq(_lvlusdToken.denylisted(_denylisted), false);
 
         vm.prank(_denylister);
-        _lvusdToken.addToDenylist(_denylisted);
+        _lvlusdToken.addToDenylist(_denylisted);
 
         vm.prank(_minter);
         vm.expectRevert(DenylistedErr);
-        _lvusdToken.mint(_denylisted, 100);
+        _lvlusdToken.mint(_denylisted, 100);
     }
 
     function testDenylistPreventsTransfersFrom() public {
         vm.prank(_minter);
-        _lvusdToken.mint(_denylisted, 100);
+        _lvlusdToken.mint(_denylisted, 100);
 
-        assertEq(_lvusdToken.balanceOf(_denylisted), 100);
+        assertEq(_lvlusdToken.balanceOf(_denylisted), 100);
 
         vm.prank(_denylister);
-        _lvusdToken.addToDenylist(_denylisted);
+        _lvlusdToken.addToDenylist(_denylisted);
 
         vm.prank(_denylisted);
         vm.expectRevert(DenylistedErr);
-        _lvusdToken.transfer(_owner, 100);
+        _lvlusdToken.transfer(_owner, 100);
     }
 
     function testDenylistPreventsTransfersTo() public {
         vm.prank(_minter);
-        _lvusdToken.mint(_minter, 100);
+        _lvlusdToken.mint(_minter, 100);
 
-        assertEq(_lvusdToken.balanceOf(_minter), 100);
+        assertEq(_lvlusdToken.balanceOf(_minter), 100);
 
         vm.prank(_denylister);
-        _lvusdToken.addToDenylist(_denylisted);
+        _lvlusdToken.addToDenylist(_denylisted);
 
         vm.prank(_minter);
         vm.expectRevert(DenylistedErr);
-        _lvusdToken.transfer(_denylisted, 100);
+        _lvlusdToken.transfer(_denylisted, 100);
     }
 }

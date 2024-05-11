@@ -27,9 +27,9 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             "Mismatch in stETH balance"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
-            "Mismatch in lvUSD balance"
+            "Mismatch in lvlUSD balance"
         );
     }
 
@@ -41,7 +41,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory redeemOrder,
             ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = redeem_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.startPrank(redeemer);
         LevelMintingContract.redeem(redeemOrder, takerSignature2);
@@ -61,7 +61,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             beneficiary: benefactor,
             collateral_asset: address(stETHToken),
             collateral_amount: _stETHToDeposit,
-            lvusd_amount: _lvusdToMint
+            lvlusd_amount: _lvlusdToMint
         });
 
         address[] memory targets = new address[](1);
@@ -87,14 +87,14 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         );
         vm.stopPrank();
 
-        assertEq(lvusdToken.balanceOf(benefactor), 0);
+        assertEq(lvlusdToken.balanceOf(benefactor), 0);
 
         vm.recordLogs();
         vm.prank(minter);
         LevelMintingContract.mint(order, route, takerSignature);
         vm.getRecordedLogs();
 
-        assertEq(lvusdToken.balanceOf(benefactor), _lvusdToMint);
+        assertEq(lvlusdToken.balanceOf(benefactor), _lvlusdToMint);
 
         //redeem
         ILevelMinting.Order memory redeemOrder = ILevelMinting.Order({
@@ -104,13 +104,13 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             benefactor: benefactor,
             beneficiary: benefactor,
             collateral_asset: address(stETHToken),
-            lvusd_amount: _lvusdToMint,
+            lvlusd_amount: _lvlusdToMint,
             collateral_amount: _stETHToDeposit
         });
 
         // taker
         vm.startPrank(benefactor);
-        lvusdToken.approve(address(LevelMintingContract), _lvusdToMint);
+        lvlusdToken.approve(address(LevelMintingContract), _lvlusdToMint);
 
         bytes32 digest3 = LevelMintingContract.hashOrder(redeemOrder);
         ILevelMinting.Signature memory takerSignature2 = signOrder(
@@ -124,7 +124,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.redeem(redeemOrder, takerSignature2);
 
         assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
-        assertEq(lvusdToken.balanceOf(benefactor), 0);
+        assertEq(lvlusdToken.balanceOf(benefactor), 0);
 
         vm.stopPrank();
     }
@@ -147,7 +147,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             stETHToken.balanceOf(address(LevelMintingContract)),
             _stETHToDeposit
         );
-        assertEq(lvusdToken.balanceOf(beneficiary), expectedAmount);
+        assertEq(lvlusdToken.balanceOf(beneficiary), expectedAmount);
     }
 
     function test_multipleValid_custodyRatios_addresses() public {
@@ -160,7 +160,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
             collateral_amount: _stETHToDeposit,
-            lvusd_amount: _smallUsdeToMint
+            lvlusd_amount: _smallUsdeToMint
         });
 
         address[] memory targets = new address[](3);
@@ -203,7 +203,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.mint(order, route, takerSignature);
 
         assertEq(stETHToken.balanceOf(benefactor), 0);
-        assertEq(lvusdToken.balanceOf(beneficiary), _smallUsdeToMint);
+        assertEq(lvlusdToken.balanceOf(beneficiary), _smallUsdeToMint);
 
         assertEq(
             stETHToken.balanceOf(address(custodian1)),
@@ -241,7 +241,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
             collateral_amount: _stETHToDeposit,
-            lvusd_amount: _lvusdToMint
+            lvlusd_amount: _lvlusdToMint
         });
 
         address[] memory targets = new address[](2);
@@ -275,7 +275,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.mint(mintOrder, route, takerSignature);
 
         assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
-        assertEq(lvusdToken.balanceOf(beneficiary), 0);
+        assertEq(lvlusdToken.balanceOf(beneficiary), 0);
 
         assertEq(stETHToken.balanceOf(address(LevelMintingContract)), 0);
         assertEq(stETHToken.balanceOf(owner), 0);
@@ -294,7 +294,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
             collateral_amount: _stETHToDeposit,
-            lvusd_amount: _lvusdToMint
+            lvlusd_amount: _lvlusdToMint
         });
 
         address[] memory targets = new address[](1);
@@ -327,7 +327,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.mint(order, route, takerSignature);
 
         assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
-        assertEq(lvusdToken.balanceOf(beneficiary), 0);
+        assertEq(lvlusdToken.balanceOf(beneficiary), 0);
 
         assertEq(stETHToken.balanceOf(address(LevelMintingContract)), 0);
     }
@@ -346,7 +346,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
             collateral_amount: _stETHToDeposit,
-            lvusd_amount: _lvusdToMint
+            lvlusd_amount: _lvlusdToMint
         });
 
         address[] memory targets = new address[](1);
@@ -392,7 +392,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             beneficiary: beneficiary,
             collateral_asset: address(token),
             collateral_amount: _stETHToDeposit,
-            lvusd_amount: _lvusdToMint
+            lvlusd_amount: _lvlusdToMint
         });
 
         address[] memory targets = new address[](1);
@@ -430,7 +430,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             ILevelMinting.Order memory order,
             ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.warp(block.timestamp + 11 minutes);
 
@@ -482,10 +482,10 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.addSupportedAsset(address(0));
     }
 
-    function test_cannotAdd_lvUSD_revert() public {
+    function test_cannotAdd_lvlUSD_revert() public {
         vm.prank(owner);
         vm.expectRevert(InvalidAssetAddress);
-        LevelMintingContract.addSupportedAsset(address(lvusdToken));
+        LevelMintingContract.addSupportedAsset(address(lvlusdToken));
     }
 
     function test_sending_redeem_order_to_mint_revert() public {

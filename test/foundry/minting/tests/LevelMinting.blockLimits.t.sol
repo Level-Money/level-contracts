@@ -69,7 +69,7 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         // maker
         vm.startPrank(minter);
         assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
-        assertEq(lvusdToken.balanceOf(beneficiary), 0);
+        assertEq(lvlusdToken.balanceOf(beneficiary), 0);
 
         vm.expectRevert(MaxMintPerBlockExceeded);
         // minter passes in permit signature data
@@ -81,9 +81,9 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
             "The benefactor stEth balance should be the same as the minted stEth"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
-            "The beneficiary lvUSD balance should be 0"
+            "The beneficiary lvlUSD balance should be 0"
         );
     }
 
@@ -96,7 +96,7 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
             ILevelMinting.Order memory order,
             ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
         LevelMintingContract.mint(order, route, takerSignature);
@@ -204,9 +204,9 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
             "Mismatch in stETH balance"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             excessiveRedeemAmount,
-            "Mismatch in lvUSD balance"
+            "Mismatch in lvlUSD balance"
         );
 
         vm.stopPrank();

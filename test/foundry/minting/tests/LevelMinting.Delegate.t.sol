@@ -13,7 +13,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             ILevelMinting.Order memory order,
             ,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(benefactor);
         LevelMintingContract.setDelegatedSigner(trader2);
@@ -37,7 +37,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in benefactor stETH balance before mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
             "Mismatch in beneficiary lvUSD balance before mint"
         );
@@ -56,8 +56,8 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in beneficiary stETH balance after mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
-            _lvusdToMint,
+            lvlusdToken.balanceOf(beneficiary),
+            _lvlusdToMint,
             "Mismatch in beneficiary lvUSD balance after mint"
         );
     }
@@ -67,7 +67,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             ILevelMinting.Order memory order,
             ,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         // omit delegation by benefactor
 
@@ -90,7 +90,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in benefactor stETH balance before mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
             "Mismatch in beneficiary lvUSD balance before mint"
         );
@@ -110,7 +110,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in beneficiary stETH balance after mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
             "Mismatch in beneficiary lvUSD balance after mint"
         );
@@ -118,7 +118,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
 
     function testDelegateSuccessfulRedeem() public {
         (ILevelMinting.Order memory order, ) = redeem_setup(
-            _lvusdToMint,
+            _lvlusdToMint,
             _stETHToDeposit,
             1,
             false
@@ -146,8 +146,8 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in beneficiary stETH balance before mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
-            _lvusdToMint,
+            lvlusdToken.balanceOf(beneficiary),
+            _lvlusdToMint,
             "Mismatch in beneficiary lvUSD balance before mint"
         );
 
@@ -165,7 +165,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in beneficiary stETH balance after mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
             "Mismatch in beneficiary lvUSD balance after mint"
         );
@@ -173,7 +173,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
 
     function testDelegateFailureRedeem() public {
         (ILevelMinting.Order memory order, ) = redeem_setup(
-            _lvusdToMint,
+            _lvlusdToMint,
             _stETHToDeposit,
             1,
             false
@@ -200,8 +200,8 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in beneficiary stETH balance before mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
-            _lvusdToMint,
+            lvlusdToken.balanceOf(beneficiary),
+            _lvlusdToMint,
             "Mismatch in beneficiary lvUSD balance before mint"
         );
 
@@ -220,8 +220,8 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in beneficiary stETH balance after mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
-            _lvusdToMint,
+            lvlusdToken.balanceOf(beneficiary),
+            _lvlusdToMint,
             "Mismatch in beneficiary lvUSD balance after mint"
         );
     }
@@ -231,7 +231,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             ILevelMinting.Order memory order,
             ,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         // delegate and then undelegate
         vm.startPrank(benefactor);
@@ -258,7 +258,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in benefactor stETH balance before mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
             "Mismatch in beneficiary lvUSD balance before mint"
         );
@@ -278,7 +278,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
             "Mismatch in beneficiary stETH balance after mint"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
             "Mismatch in beneficiary lvUSD balance after mint"
         );

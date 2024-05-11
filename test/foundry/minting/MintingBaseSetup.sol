@@ -11,16 +11,16 @@ import {Vm} from "forge-std/Vm.sol";
 import {Utils} from "../../utils/Utils.sol";
 
 import "../../mocks/MockToken.sol";
-import "../../../src/lvUSD.sol";
+import "../../../src/lvlUSD.sol";
 import "../../../src/interfaces/ILevelMinting.sol";
 import "../../../src/interfaces/ILevelMintingEvents.sol";
 import "../../../src/LevelMinting.sol";
 import "../../../src/interfaces/ISingleAdminAccessControl.sol";
-import "../../../src/interfaces/IlvUSDDefinitions.sol";
+import "../../../src/interfaces/IlvlUSDDefinitions.sol";
 
-contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
+contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     Utils internal utils;
-    lvUSD internal lvusdToken;
+    lvlUSD internal lvlusdToken;
     MockToken internal stETHToken;
     MockToken internal cbETHToken;
     MockToken internal rETHToken;
@@ -29,7 +29,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
     MockToken internal token;
     LevelMinting internal LevelMintingContract;
     SigUtils internal sigUtils;
-    SigUtils internal sigUtilslvUSD;
+    SigUtils internal sigUtilslvlUSD;
 
     uint256 internal ownerPrivateKey;
     uint256 internal newOwnerPrivateKey;
@@ -81,8 +81,8 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
         abi.encodeWithSelector(ILevelMinting.Duplicate.selector);
     bytes internal InvalidAddress =
         abi.encodeWithSelector(ILevelMinting.InvalidAddress.selector);
-    bytes internal InvalidlvUSDAddress =
-        abi.encodeWithSelector(ILevelMinting.InvalidlvUSDAddress.selector);
+    bytes internal InvalidlvlUSDAddress =
+        abi.encodeWithSelector(ILevelMinting.InvalidlvlUSDAddress.selector);
     bytes internal InvalidAssetAddress =
         abi.encodeWithSelector(ILevelMinting.InvalidAssetAddress.selector);
     bytes internal InvalidOrder =
@@ -113,17 +113,17 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
         abi.encodeWithSelector(
             ILevelMinting.MaxRedeemPerBlockExceeded.selector
         );
-    // lvUSD error encodings
+    // lvlUSD error encodings
     bytes internal OnlyMinterErr =
-        abi.encodeWithSelector(IlvUSDDefinitions.OnlyMinter.selector);
+        abi.encodeWithSelector(IlvlUSDDefinitions.OnlyMinter.selector);
     bytes internal ZeroAddressExceptionErr =
-        abi.encodeWithSelector(IlvUSDDefinitions.ZeroAddressException.selector);
+        abi.encodeWithSelector(IlvlUSDDefinitions.ZeroAddressException.selector);
     bytes internal OperationNotAllowedErr =
-        abi.encodeWithSelector(IlvUSDDefinitions.OperationNotAllowed.selector);
+        abi.encodeWithSelector(IlvlUSDDefinitions.OperationNotAllowed.selector);
     bytes internal IsOwnerErr =
-        abi.encodeWithSelector(IlvUSDDefinitions.IsOwner.selector);
+        abi.encodeWithSelector(IlvlUSDDefinitions.IsOwner.selector);
     bytes internal DenylistedErr =
-        abi.encodeWithSelector(IlvUSDDefinitions.Denylisted.selector);
+        abi.encodeWithSelector(IlvlUSDDefinitions.Denylisted.selector);
 
     bytes32 internal constant ROUTE_TYPE =
         keccak256("Route(address[] addresses,uint256[] ratios)");
@@ -135,7 +135,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
     uint256 internal _slippageRange = 50000000000000000;
     uint256 internal _stETHToDeposit = 50 * 10 ** 18;
     uint256 internal _stETHToWithdraw = 30 * 10 ** 18;
-    uint256 internal _lvusdToMint = 8.75 * 10 ** 23;
+    uint256 internal _lvlusdToMint = 8.75 * 10 ** 23;
     uint256 internal _maxMintPerBlock = 10e23;
     uint256 internal _maxRedeemPerBlock = _maxMintPerBlock;
 
@@ -161,7 +161,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
     function setUp() public virtual {
         utils = new Utils();
 
-        lvusdToken = new lvUSD(address(this));
+        lvlusdToken = new lvlUSD(address(this));
         stETHToken = new MockToken("Staked ETH", "sETH", 18, msg.sender);
         cbETHToken = new MockToken("Coinbase ETH", "cbETH", 18, msg.sender);
         rETHToken = new MockToken("Rocket Pool ETH", "rETH", 18, msg.sender);
@@ -179,7 +179,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
         );
 
         sigUtils = new SigUtils(stETHToken.DOMAIN_SEPARATOR());
-        sigUtilslvUSD = new SigUtils(lvusdToken.DOMAIN_SEPARATOR());
+        sigUtilslvlUSD = new SigUtils(lvlusdToken.DOMAIN_SEPARATOR());
 
         assets = new address[](6);
         assets[0] = address(stETHToken);
@@ -242,7 +242,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
         // Set the roles
         vm.startPrank(owner);
         LevelMintingContract = new LevelMinting(
-            IlvUSD(address(lvusdToken)),
+            IlvlUSD(address(lvlusdToken)),
             assets,
             custodians,
             owner,
@@ -266,7 +266,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
         stETHToken.mint(_stETHToDeposit, benefactor);
         vm.stopPrank();
 
-        lvusdToken.setMinter(address(LevelMintingContract));
+        lvlusdToken.setMinter(address(LevelMintingContract));
     }
 
     function _generateRouteTypeHash(
@@ -300,7 +300,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
 
     // Generic mint setup reused in the tests to reduce lines of code
     function mint_setup(
-        uint256 lvusdAmount,
+        uint256 lvlusdAmount,
         uint256 collateralAmount,
         uint256 nonce,
         bool multipleMints
@@ -319,7 +319,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
             benefactor: benefactor,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
-            lvusd_amount: lvusdAmount,
+            lvlusd_amount: lvlusdAmount,
             collateral_amount: collateralAmount
         });
 
@@ -343,9 +343,9 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
 
         if (!multipleMints) {
             assertEq(
-                lvusdToken.balanceOf(beneficiary),
+                lvlusdToken.balanceOf(beneficiary),
                 0,
-                "Mismatch in lvUSD balance"
+                "Mismatch in lvlUSD balance"
             );
             assertEq(
                 stETHToken.balanceOf(address(LevelMintingContract)),
@@ -362,7 +362,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
 
     // Generic redeem setup reused in the tests to reduce lines of code
     function redeem_setup(
-        uint256 lvusdAmount,
+        uint256 lvlusdAmount,
         uint256 collateralAmount,
         uint256 nonce,
         bool multipleRedeem
@@ -377,7 +377,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
             ILevelMinting.Order memory mintOrder,
             ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
-        ) = mint_setup(lvusdAmount, collateralAmount, nonce, false);
+        ) = mint_setup(lvlusdAmount, collateralAmount, nonce, false);
 
         vm.prank(minter);
         LevelMintingContract.mint(mintOrder, route, takerSignature);
@@ -390,13 +390,13 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
-            lvusd_amount: lvusdAmount,
+            lvlusd_amount: lvlusdAmount,
             collateral_amount: collateralAmount
         });
 
         // taker
         vm.startPrank(beneficiary);
-        lvusdToken.approve(address(LevelMintingContract), lvusdAmount);
+        lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
 
         bytes32 digest3 = LevelMintingContract.hashOrder(redeemOrder);
         takerSignature2 = signOrder(
@@ -422,9 +422,9 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvUSDDefinitions {
                 "Mismatch in stETH balance"
             );
             assertEq(
-                lvusdToken.balanceOf(beneficiary),
-                lvusdAmount,
-                "Mismatch in lvUSD balance"
+                lvlusdToken.balanceOf(beneficiary),
+                lvlusdAmount,
+                "Mismatch in lvlUSD balance"
             );
         }
     }
