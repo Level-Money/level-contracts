@@ -39,7 +39,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             0,
-            "Mismatch in beneficiary lvUSD balance before mint"
+            "Mismatch in beneficiary lvlUSD balance before mint"
         );
 
         vm.prank(minter);
@@ -58,7 +58,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             _lvlusdToMint,
-            "Mismatch in beneficiary lvUSD balance after mint"
+            "Mismatch in beneficiary lvlUSD balance after mint"
         );
     }
 
@@ -92,7 +92,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             0,
-            "Mismatch in beneficiary lvUSD balance before mint"
+            "Mismatch in beneficiary lvlUSD balance before mint"
         );
 
         vm.prank(minter);
@@ -112,7 +112,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             0,
-            "Mismatch in beneficiary lvUSD balance after mint"
+            "Mismatch in beneficiary lvlUSD balance after mint"
         );
     }
 
@@ -148,7 +148,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             _lvlusdToMint,
-            "Mismatch in beneficiary lvUSD balance before mint"
+            "Mismatch in beneficiary lvlUSD balance before mint"
         );
 
         vm.prank(redeemer);
@@ -167,7 +167,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             0,
-            "Mismatch in beneficiary lvUSD balance after mint"
+            "Mismatch in beneficiary lvlUSD balance after mint"
         );
     }
 
@@ -202,7 +202,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             _lvlusdToMint,
-            "Mismatch in beneficiary lvUSD balance before mint"
+            "Mismatch in beneficiary lvlUSD balance before mint"
         );
 
         vm.prank(redeemer);
@@ -222,7 +222,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             _lvlusdToMint,
-            "Mismatch in beneficiary lvUSD balance after mint"
+            "Mismatch in beneficiary lvlUSD balance after mint"
         );
     }
 
@@ -260,7 +260,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             0,
-            "Mismatch in beneficiary lvUSD balance before mint"
+            "Mismatch in beneficiary lvlUSD balance before mint"
         );
 
         vm.prank(minter);
@@ -280,7 +280,7 @@ contract LevelMintingDelegateTest is LevelMintingUtils {
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
             0,
-            "Mismatch in beneficiary lvUSD balance after mint"
+            "Mismatch in beneficiary lvlUSD balance after mint"
         );
     }
 }
