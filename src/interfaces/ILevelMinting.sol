@@ -36,12 +36,12 @@ interface ILevelMinting is ILevelMintingEvents {
         address beneficiary;
         address collateral_asset;
         uint256 collateral_amount;
-        uint256 lvusd_amount;
+        uint256 lvlusd_amount;
     }
 
     error Duplicate();
     error InvalidAddress();
-    error InvalidlvUSDAddress();
+    error InvalidlvlUSDAddress();
     error InvalidZeroAddress();
     error InvalidAssetAddress();
     error InvalidCustodianAddress();

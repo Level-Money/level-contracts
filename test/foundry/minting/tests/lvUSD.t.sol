@@ -11,12 +11,12 @@ import {SigUtils} from "../../../utils/SigUtils.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "../../../../src/lvUSD.sol";
+import "../../../../src/lvlUSD.sol";
 import "../LevelMinting.utils.sol";
 import "../../../mocks/MockBurner.sol";
 
-contract lvUSDTest is Test, IlvUSDDefinitions, LevelMintingUtils {
-    lvUSD internal _lvusdToken;
+contract lvlUSDTest is Test, IlvlUSDDefinitions, LevelMintingUtils {
+    lvlUSD internal _lvlusdToken;
 
     uint256 internal _ownerPrivateKey;
     uint256 internal _newOwnerPrivateKey;
@@ -55,186 +55,186 @@ contract lvUSDTest is Test, IlvUSDDefinitions, LevelMintingUtils {
         vm.label(_burner, "burner");
         vm.label(_otherBurner, "otherBurner");
 
-        _lvusdToken = new lvUSD(_owner);
+        _lvlusdToken = new lvlUSD(_owner);
         vm.startPrank(_owner);
-        _lvusdToken.setMinter(_minter);
+        _lvlusdToken.setMinter(_minter);
         vm.stopPrank();
 
         vm.startPrank(_minter);
-        _lvusdToken.mint(_burner, 100);
-        _lvusdToken.mint(_otherBurner, 100);
+        _lvlusdToken.mint(_burner, 100);
+        _lvlusdToken.mint(_otherBurner, 100);
         vm.stopPrank();
 
         _burnerContract = address(new MockBurner());
     }
 
     function testCorrectInitialConfig() public {
-        assertEq(_lvusdToken.owner(), _owner);
-        assertEq(_lvusdToken.minter(), _minter);
+        assertEq(_lvlusdToken.owner(), _owner);
+        assertEq(_lvlusdToken.minter(), _minter);
     }
 
     function testCantInitWithNoOwner() public {
         vm.expectRevert(ZeroAddressExceptionErr);
-        new lvUSD(address(0));
+        new lvlUSD(address(0));
     }
 
     function testOwnershipCannotBeRenounced() public {
         vm.startPrank(_owner);
         vm.expectRevert(OperationNotAllowedErr);
-        _lvusdToken.renounceRole(adminRole, _owner);
+        _lvlusdToken.renounceRole(adminRole, _owner);
         vm.stopPrank();
-        assertEq(_lvusdToken.owner(), _owner);
-        assertNotEq(_lvusdToken.owner(), address(0));
+        assertEq(_lvlusdToken.owner(), _owner);
+        assertNotEq(_lvlusdToken.owner(), address(0));
     }
 
     function testOwnershipTransferRequiresTwoSteps() public {
         vm.prank(_owner);
-        _lvusdToken.transferAdmin(_newOwner);
-        assertEq(_lvusdToken.owner(), _owner);
-        assertNotEq(_lvusdToken.owner(), _newOwner);
+        _lvlusdToken.transferAdmin(_newOwner);
+        assertEq(_lvlusdToken.owner(), _owner);
+        assertNotEq(_lvlusdToken.owner(), _newOwner);
     }
 
     function testCanTransferAdmin() public {
         vm.prank(_owner);
-        _lvusdToken.transferAdmin(_newOwner);
+        _lvlusdToken.transferAdmin(_newOwner);
         vm.prank(_newOwner);
-        _lvusdToken.acceptAdmin();
-        assertEq(_lvusdToken.owner(), _newOwner);
-        assertNotEq(_lvusdToken.owner(), _owner);
+        _lvlusdToken.acceptAdmin();
+        assertEq(_lvlusdToken.owner(), _newOwner);
+        assertNotEq(_lvlusdToken.owner(), _owner);
     }
 
     function testCanCancelOwnershipChange() public {
         vm.startPrank(_owner);
-        _lvusdToken.transferAdmin(_newOwner);
-        _lvusdToken.transferAdmin(address(0));
+        _lvlusdToken.transferAdmin(_newOwner);
+        _lvlusdToken.transferAdmin(address(0));
         vm.stopPrank();
 
         vm.prank(_newOwner);
         vm.expectRevert();
-        _lvusdToken.acceptAdmin();
-        assertEq(_lvusdToken.owner(), _owner);
-        assertNotEq(_lvusdToken.owner(), _newOwner);
+        _lvlusdToken.acceptAdmin();
+        assertEq(_lvlusdToken.owner(), _owner);
+        assertNotEq(_lvlusdToken.owner(), _newOwner);
     }
 
     function testNewOwnerCanPerformOwnerActions() public {
         vm.prank(_owner);
-        _lvusdToken.transferAdmin(_newOwner);
+        _lvlusdToken.transferAdmin(_newOwner);
         vm.startPrank(_newOwner);
-        _lvusdToken.acceptAdmin();
-        _lvusdToken.setMinter(_newMinter);
+        _lvlusdToken.acceptAdmin();
+        _lvlusdToken.setMinter(_newMinter);
         vm.stopPrank();
-        assertEq(_lvusdToken.minter(), _newMinter);
-        assertNotEq(_lvusdToken.minter(), _minter);
+        assertEq(_lvlusdToken.minter(), _newMinter);
+        assertNotEq(_lvlusdToken.minter(), _minter);
     }
 
     function testOnlyOwnerCanSetMinter() public {
         vm.startPrank(_newOwner);
         vm.expectRevert(_getInvalidRoleError(adminRole, _newOwner));
-        _lvusdToken.setMinter(_newMinter);
+        _lvlusdToken.setMinter(_newMinter);
         vm.stopPrank();
 
-        assertEq(_lvusdToken.minter(), _minter);
+        assertEq(_lvlusdToken.minter(), _minter);
     }
 
     function testOwnerCantMint() public {
         vm.prank(_owner);
         vm.expectRevert(OnlyMinterErr);
-        _lvusdToken.mint(_newMinter, 100);
+        _lvlusdToken.mint(_newMinter, 100);
     }
 
     function testMinterCanMint() public {
-        assertEq(_lvusdToken.balanceOf(_newMinter), 0);
+        assertEq(_lvlusdToken.balanceOf(_newMinter), 0);
         vm.prank(_minter);
-        _lvusdToken.mint(_newMinter, 100);
-        assertEq(_lvusdToken.balanceOf(_newMinter), 100);
+        _lvlusdToken.mint(_newMinter, 100);
+        assertEq(_lvlusdToken.balanceOf(_newMinter), 100);
     }
 
     function testMinterCantMintToZeroAddress() public {
         vm.prank(_minter);
         vm.expectRevert("ERC20: mint to the zero address");
-        _lvusdToken.mint(address(0), 100);
+        _lvlusdToken.mint(address(0), 100);
     }
 
     function testNewMinterCanMint() public {
-        assertEq(_lvusdToken.balanceOf(_newMinter), 0);
+        assertEq(_lvlusdToken.balanceOf(_newMinter), 0);
         vm.prank(_owner);
-        _lvusdToken.setMinter(_newMinter);
+        _lvlusdToken.setMinter(_newMinter);
         vm.prank(_newMinter);
-        _lvusdToken.mint(_newMinter, 100);
-        assertEq(_lvusdToken.balanceOf(_newMinter), 100);
+        _lvlusdToken.mint(_newMinter, 100);
+        assertEq(_lvlusdToken.balanceOf(_newMinter), 100);
     }
 
     function testOldMinterCantMint() public {
-        assertEq(_lvusdToken.balanceOf(_newMinter), 0);
+        assertEq(_lvlusdToken.balanceOf(_newMinter), 0);
         vm.prank(_owner);
-        _lvusdToken.setMinter(_newMinter);
+        _lvlusdToken.setMinter(_newMinter);
         vm.prank(_minter);
         vm.expectRevert(OnlyMinterErr);
-        _lvusdToken.mint(_newMinter, 100);
-        assertEq(_lvusdToken.balanceOf(_newMinter), 0);
+        _lvlusdToken.mint(_newMinter, 100);
+        assertEq(_lvlusdToken.balanceOf(_newMinter), 0);
     }
 
     function testOldOwnerCanttransferAdmin() public {
         vm.prank(_owner);
-        _lvusdToken.transferAdmin(_newOwner);
+        _lvlusdToken.transferAdmin(_newOwner);
         vm.prank(_newOwner);
-        _lvusdToken.acceptAdmin();
-        assertNotEq(_lvusdToken.owner(), _owner);
-        assertEq(_lvusdToken.owner(), _newOwner);
+        _lvlusdToken.acceptAdmin();
+        assertNotEq(_lvlusdToken.owner(), _owner);
+        assertEq(_lvlusdToken.owner(), _newOwner);
 
         vm.startPrank(_owner);
         vm.expectRevert(_getInvalidRoleError(adminRole, _owner));
-        _lvusdToken.transferAdmin(_newMinter);
+        _lvlusdToken.transferAdmin(_newMinter);
         vm.stopPrank();
 
-        assertEq(_lvusdToken.owner(), _newOwner);
+        assertEq(_lvlusdToken.owner(), _newOwner);
     }
 
     function testOldOwnerCantSetMinter() public {
         vm.prank(_owner);
-        _lvusdToken.transferAdmin(_newOwner);
+        _lvlusdToken.transferAdmin(_newOwner);
         vm.prank(_newOwner);
-        _lvusdToken.acceptAdmin();
-        assertNotEq(_lvusdToken.owner(), _owner);
-        assertEq(_lvusdToken.owner(), _newOwner);
+        _lvlusdToken.acceptAdmin();
+        assertNotEq(_lvlusdToken.owner(), _owner);
+        assertEq(_lvlusdToken.owner(), _newOwner);
 
         vm.startPrank(_owner);
         vm.expectRevert(_getInvalidRoleError(adminRole, _owner));
-        _lvusdToken.setMinter(_newMinter);
+        _lvlusdToken.setMinter(_newMinter);
         vm.stopPrank();
 
-        assertEq(_lvusdToken.minter(), _minter);
+        assertEq(_lvlusdToken.minter(), _minter);
     }
 
     function testBurnerCanBurn() public {
         vm.prank(_burner);
-        _lvusdToken.burn(51);
+        _lvlusdToken.burn(51);
 
-        assertEq(_lvusdToken.balanceOf(_burner), 49);
+        assertEq(_lvlusdToken.balanceOf(_burner), 49);
     }
 
     function testOtherBurnerCanBurn() public {
-        assertEq(_lvusdToken.balanceOf(_otherBurner), 100);
+        assertEq(_lvlusdToken.balanceOf(_otherBurner), 100);
 
         vm.prank(_otherBurner);
-        _lvusdToken.burn(100);
-        assertEq(_lvusdToken.balanceOf(_otherBurner), 0);
+        _lvlusdToken.burn(100);
+        assertEq(_lvlusdToken.balanceOf(_otherBurner), 0);
     }
 
     function testFunctionCanBurn() public {
         vm.prank(_minter);
-        _lvusdToken.mint(_burnerContract, 100);
-        assertEq(_lvusdToken.balanceOf(_burnerContract), 100);
+        _lvlusdToken.mint(_burnerContract, 100);
+        assertEq(_lvlusdToken.balanceOf(_burnerContract), 100);
 
         MockBurner burner = MockBurner(_burnerContract);
-        burner.burn(100, _lvusdToken);
-        assertEq(_lvusdToken.balanceOf(_burnerContract), 0);
+        burner.burn(100, _lvlusdToken);
+        assertEq(_lvlusdToken.balanceOf(_burnerContract), 0);
     }
 
     function testFunctionRevertsIfNoBalance() public {
         MockBurner burner = MockBurner(_burnerContract);
         vm.expectRevert("ERC20: burn amount exceeds balance");
-        burner.burn(1, _lvusdToken);
+        burner.burn(1, _lvlusdToken);
     }
 
     // Ensure that even if an address approved the burner contract
@@ -242,15 +242,15 @@ contract lvUSDTest is Test, IlvUSDDefinitions, LevelMintingUtils {
     // not own them directly.
     function testFunctionCannotBurnDelegated() public {
         vm.prank(_minter);
-        _lvusdToken.mint(_newMinter, 100);
-        assertEq(_lvusdToken.balanceOf(_newMinter), 100);
+        _lvlusdToken.mint(_newMinter, 100);
+        assertEq(_lvlusdToken.balanceOf(_newMinter), 100);
 
         vm.prank(_newMinter);
-        _lvusdToken.approve(_burnerContract, 100);
+        _lvlusdToken.approve(_burnerContract, 100);
 
         MockBurner burner = MockBurner(_burnerContract);
 
         vm.expectRevert("ERC20: burn amount exceeds balance");
-        burner.burn(100, _lvusdToken);
+        burner.burn(100, _lvlusdToken);
     }
 }

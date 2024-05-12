@@ -2,7 +2,7 @@
 pragma solidity >=0.8.19;
 
 /// @dev Changelog: changed solidity version and name
-interface IlvUSDDefinitions {
+interface IlvlUSDDefinitions {
     /// @notice This event is fired when the minter changes
     event MinterUpdated(address indexed newMinter, address indexed oldMinter);
     /// @notice This event is fired when the slasher changes

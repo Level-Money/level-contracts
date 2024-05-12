@@ -24,7 +24,7 @@ contract LevelMintingUtils is MintingBaseSetup {
         LevelMintingContract.mint(order, route, takerSignature);
 
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             0,
             "The beneficiary balance should be 0"
         );
@@ -67,9 +67,9 @@ contract LevelMintingUtils is MintingBaseSetup {
             "Mismatch in stETH balance"
         );
         assertEq(
-            lvusdToken.balanceOf(beneficiary),
+            lvlusdToken.balanceOf(beneficiary),
             excessiveRedeemAmount,
-            "Mismatch in lvUSD balance"
+            "Mismatch in lvlUSD balance"
         );
 
         vm.stopPrank();
@@ -80,7 +80,7 @@ contract LevelMintingUtils is MintingBaseSetup {
             ILevelMinting.Order memory order,
             ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
         LevelMintingContract.mint(order, route, takerSignature);
@@ -90,7 +90,7 @@ contract LevelMintingUtils is MintingBaseSetup {
         (
             ILevelMinting.Order memory redeemOrder,
             ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = redeem_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
         vm.prank(redeemer);
         LevelMintingContract.redeem(redeemOrder, takerSignature2);
     }

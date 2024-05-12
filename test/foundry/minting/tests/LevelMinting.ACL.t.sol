@@ -19,16 +19,16 @@ contract LevelMintingACLTest is LevelMintingUtils {
         stETHToken.mint(1 * 1e18, maker1);
         stETHToken.mint(1 * 1e18, trader1);
         vm.expectRevert(OnlyMinterErr);
-        lvusdToken.mint(address(maker2), 2000 * 1e18);
+        lvlusdToken.mint(address(maker2), 2000 * 1e18);
         vm.expectRevert(OnlyMinterErr);
-        lvusdToken.mint(address(trader2), 2000 * 1e18);
+        lvlusdToken.mint(address(trader2), 2000 * 1e18);
     }
 
     function test_redeem_notRedeemer_revert() public {
         (
             ILevelMinting.Order memory redeemOrder,
             ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = redeem_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.startPrank(minter);
         vm.expectRevert(
@@ -49,7 +49,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
             ILevelMinting.Order memory mintOrder,
             ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.assume(nonMinter != minter);
         vm.startPrank(nonMinter);
@@ -66,7 +66,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
         LevelMintingContract.mint(mintOrder, route, takerSignature);
 
         assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
-        assertEq(lvusdToken.balanceOf(beneficiary), 0);
+        assertEq(lvlusdToken.balanceOf(beneficiary), 0);
     }
 
     function test_fuzz_nonOwner_cannot_add_supportedAsset_revert(
@@ -221,7 +221,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
             ILevelMinting.Order memory order,
             ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
         vm.expectRevert(MaxMintPerBlockExceeded);
@@ -763,7 +763,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
 
     function testCorrectInitConfig() public {
         LevelMinting levelMinting2 = new LevelMinting(
-            IlvUSD(address(lvusdToken)),
+            IlvlUSD(address(lvlusdToken)),
             assets,
             custodians,
             randomer,

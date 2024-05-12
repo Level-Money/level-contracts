@@ -5,18 +5,18 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
-import "./interfaces/IlvUSDDefinitions.sol";
+import "./interfaces/IlvlUSDDefinitions.sol";
 import "./SingleAdminAccessControl.sol";
 import "forge-std/console.sol";
 
 /**
- * @title lvUSD
- * @notice lvUSD contract
+ * @title lvlUSD
+ * @notice lvlUSD contract
  */
-contract lvUSD is
+contract lvlUSD is
     ERC20Burnable,
     ERC20Permit,
-    IlvUSDDefinitions,
+    IlvlUSDDefinitions,
     SingleAdminAccessControl
 {
     /// @notice The role that is allowed to denylist and un-denylist addresses
@@ -31,7 +31,7 @@ contract lvUSD is
 
     constructor(
         address admin
-    ) ERC20("Level USD", "lvUSD") ERC20Permit("lvUSD") {
+    ) ERC20("Level USD", "lvlUSD") ERC20Permit("lvlUSD") {
         if (admin == address(0)) revert ZeroAddressException();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(DENYLIST_MANAGER_ROLE, admin);
