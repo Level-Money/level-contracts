@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "../../../../src/lvlUSD.sol";
 import "../LevelMinting.utils.sol";
-import "../../../mocks/MockBurner.sol";
+import "../../../mocks/MockSlasher.sol";
 
 contract lvlUSDTest is Test, IlvlUSDDefinitions, LevelMintingUtils {
     lvlUSD internal _lvlusdToken;
@@ -65,7 +65,7 @@ contract lvlUSDTest is Test, IlvlUSDDefinitions, LevelMintingUtils {
         _lvlusdToken.mint(_otherBurner, 100);
         vm.stopPrank();
 
-        _burnerContract = address(new MockBurner());
+        _burnerContract = address(new MockSlasher());
     }
 
     function testCorrectInitialConfig() public {
@@ -226,13 +226,13 @@ contract lvlUSDTest is Test, IlvlUSDDefinitions, LevelMintingUtils {
         _lvlusdToken.mint(_burnerContract, 100);
         assertEq(_lvlusdToken.balanceOf(_burnerContract), 100);
 
-        MockBurner burner = MockBurner(_burnerContract);
+        MockSlasher burner = MockSlasher(_burnerContract);
         burner.burn(100, _lvlusdToken);
         assertEq(_lvlusdToken.balanceOf(_burnerContract), 0);
     }
 
     function testFunctionRevertsIfNoBalance() public {
-        MockBurner burner = MockBurner(_burnerContract);
+        MockSlasher burner = MockSlasher(_burnerContract);
         vm.expectRevert("ERC20: burn amount exceeds balance");
         burner.burn(1, _lvlusdToken);
     }
@@ -248,7 +248,7 @@ contract lvlUSDTest is Test, IlvlUSDDefinitions, LevelMintingUtils {
         vm.prank(_newMinter);
         _lvlusdToken.approve(_burnerContract, 100);
 
-        MockBurner burner = MockBurner(_burnerContract);
+        MockSlasher burner = MockSlasher(_burnerContract);
 
         vm.expectRevert("ERC20: burn amount exceeds balance");
         burner.burn(100, _lvlusdToken);
