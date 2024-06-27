@@ -35,10 +35,6 @@ contract LevelMinting is
             "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
         );
 
-    /// @notice route type
-    bytes32 private constant ROUTE_TYPE =
-        keccak256("Route(address[] addresses,uint256[] ratios)");
-
     /// @notice order type
     bytes32 private constant ORDER_TYPE =
         keccak256(
@@ -54,10 +50,6 @@ contract LevelMinting is
     /// @notice role enabling to disable mint and redeem and remove minters and redeemers in an emergency
     bytes32 private constant GATEKEEPER_ROLE = keccak256("GATEKEEPER_ROLE");
 
-    /// @notice EIP712 domain hash
-    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
-        keccak256(abi.encodePacked(EIP712_DOMAIN));
-
     /// @notice EIP712 name
     bytes32 private constant EIP_712_NAME = keccak256("LevelMinting");
 
@@ -67,7 +59,7 @@ contract LevelMinting is
     /* --------------- STATE VARIABLES --------------- */
 
     /// @notice lvlusd stablecoin
-    IlvlUSD public lvlusd;
+    IlvlUSD public immutable lvlusd;
 
     /// @notice Supported assets
     EnumerableSet.AddressSet internal _supportedAssets;
@@ -157,16 +149,10 @@ contract LevelMinting is
     /* --------------- EXTERNAL --------------- */
 
     /**
-     * @notice Fallback function to receive ether
-     */
-    receive() external payable {
-        emit Received(msg.sender, msg.value);
-    }
-
-    /**
      * @notice Mint stablecoins from assets
      * @param order struct containing order details and confirmation from server
      * @param signature signature of the taker
+     * @param route the addresses to which the collateral should be sent (and ratios describing the amount to send to each address)
      */
     function mint(
         Order calldata order,
@@ -182,8 +168,7 @@ contract LevelMinting is
         if (order.order_type != OrderType.MINT) revert InvalidOrder();
         verifyOrder(order, signature);
         if (!verifyRoute(route, order.order_type)) revert InvalidRoute();
-        if (!_deduplicateOrder(order.benefactor, order.nonce))
-            revert Duplicate();
+        _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the minted amount in this block
         mintedPerBlock[block.number] += order.lvlusd_amount;
         _transferCollateral(
@@ -221,8 +206,7 @@ contract LevelMinting is
     {
         if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
         verifyOrder(order, signature);
-        if (!_deduplicateOrder(order.benefactor, order.nonce))
-            revert Duplicate();
+        _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the redeemed amount in this block
         redeemedPerBlock[block.number] += order.lvlusd_amount;
         lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
@@ -281,9 +265,7 @@ contract LevelMinting is
     ) external nonReentrant onlyRole(MINTER_ROLE) {
         if (wallet == address(0) || !_custodianAddresses.contains(wallet))
             revert InvalidAddress();
-        else {
-            IERC20(asset).safeTransfer(wallet, amount);
-        }
+        IERC20(asset).safeTransfer(wallet, amount);
         emit CustodyTransfer(wallet, asset, amount);
     }
 
@@ -393,12 +375,6 @@ contract LevelMinting is
             );
     }
 
-    function encodeRoute(
-        Route calldata route
-    ) public pure returns (bytes memory) {
-        return abi.encode(ROUTE_TYPE, route.addresses, route.ratios);
-    }
-
     /// @notice assert validity of signed order
     function verifyOrder(
         Order calldata order,
@@ -458,7 +434,7 @@ contract LevelMinting is
         uint256 nonce
     ) public view override returns (bool, uint256, uint256, uint256) {
         if (nonce == 0) revert InvalidNonce();
-        uint256 invalidatorSlot = uint64(nonce) >> 8;
+        uint256 invalidatorSlot = nonce >> 8;
         uint256 invalidatorBit = 1 << uint8(nonce);
         mapping(uint256 => uint256) storage invalidatorStorage = _orderBitmaps[
             sender
@@ -510,23 +486,20 @@ contract LevelMinting is
         uint256[] calldata ratios
     ) internal {
         // cannot mint using unsupported asset or native ETH even if it is supported for redemptions
-        if (!_supportedAssets.contains(asset))
-            revert UnsupportedAsset();
+        if (!_supportedAssets.contains(asset)) revert UnsupportedAsset();
         IERC20 token = IERC20(asset);
-        uint256 totalTransferred = 0;
-        for (uint256 i = 0; i < addresses.length; ++i) {
-            uint256 amountToTransfer = (amount * ratios[i]) / 10_000;
-            token.safeTransferFrom(benefactor, addresses[i], amountToTransfer);
+        uint256 totalTransferred;
+        uint256 amountToTransfer;
+        for (uint256 i = 0; i < addresses.length - 1; ++i) {
+            amountToTransfer = (amount * ratios[i]) / 10_000;
             totalTransferred += amountToTransfer;
+            token.safeTransferFrom(benefactor, addresses[i], amountToTransfer);
         }
-        uint256 remainingBalance = amount - totalTransferred;
-        if (remainingBalance > 0) {
-            token.safeTransferFrom(
-                benefactor,
-                addresses[addresses.length - 1],
-                remainingBalance
-            );
-        }
+        token.safeTransferFrom(
+            benefactor,
+            addresses[addresses.length - 1],
+            amount - totalTransferred
+        );
     }
 
     /// @notice Sets the max mintPerBlock limit

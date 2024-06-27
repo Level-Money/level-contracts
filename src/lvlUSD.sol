@@ -31,7 +31,7 @@ contract lvlUSD is
 
     constructor(
         address admin
-    ) ERC20("Level USD", "lvlUSD") ERC20Permit("lvlUSD") {
+    ) ERC20("Level USD", "lvlUSD") ERC20Permit("Level USD") {
         if (admin == address(0)) revert ZeroAddressException();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(DENYLIST_MANAGER_ROLE, admin);
@@ -78,7 +78,7 @@ contract lvlUSD is
         address to,
         uint256
     ) internal virtual override {
-        if (denylisted[from] || denylisted[to]) {
+        if (denylisted[from] || denylisted[to] || denylisted[msg.sender]) {
             revert Denylisted();
         }
     }
