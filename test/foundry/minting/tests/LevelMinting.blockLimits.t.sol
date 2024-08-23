@@ -18,23 +18,21 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         uint256 secondMintAmount = maxMintAmount / 2;
         (
             ILevelMinting.Order memory aOrder,
-            ILevelMinting.Signature memory aTakerSignature,
             ILevelMinting.Route memory aRoute
         ) = mint_setup(firstMintAmount, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
-        LevelMintingContract.mint(aOrder, aRoute, aTakerSignature);
+        LevelMintingContract.mint(aOrder, aRoute);
 
         vm.prank(owner);
         stETHToken.mint(_stETHToDeposit, benefactor);
 
         (
             ILevelMinting.Order memory bOrder,
-            ILevelMinting.Signature memory bTakerSignature,
             ILevelMinting.Route memory bRoute
         ) = mint_setup(secondMintAmount, _stETHToDeposit, 2, true);
         vm.prank(minter);
-        LevelMintingContract.mint(bOrder, bRoute, bTakerSignature);
+        LevelMintingContract.mint(bOrder, bRoute);
 
         assertEq(
             LevelMintingContract.mintedPerBlock(block.number),
@@ -62,7 +60,6 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         vm.assume(excessiveMintAmount > LevelMintingContract.maxMintPerBlock());
         (
             ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         ) = mint_setup(excessiveMintAmount, _stETHToDeposit, 1, false);
 
@@ -73,7 +70,7 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
 
         vm.expectRevert(MaxMintPerBlockExceeded);
         // minter passes in permit signature data
-        LevelMintingContract.mint(mintOrder, route, takerSignature);
+        LevelMintingContract.mint(mintOrder, route);
 
         assertEq(
             stETHToken.balanceOf(benefactor),
@@ -94,12 +91,11 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         );
         (
             ILevelMinting.Order memory order,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
-        LevelMintingContract.mint(order, route, takerSignature);
+        LevelMintingContract.mint(order, route);
 
         vm.roll(block.number + 1);
 
@@ -141,24 +137,28 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         uint256 firstRedeemAmount = maxRedeemAmount / 4;
         uint256 secondRedeemAmount = maxRedeemAmount / 2;
 
-        (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(firstRedeemAmount, _stETHToDeposit, 1, false);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            firstRedeemAmount,
+            _stETHToDeposit,
+            1,
+            false
+        );
 
         vm.prank(redeemer);
-        LevelMintingContract.redeem(redeemOrder, takerSignature2);
+        LevelMintingContract.redeem(redeemOrder);
 
         vm.prank(owner);
         stETHToken.mint(_stETHToDeposit, benefactor);
 
-        (
-            ILevelMinting.Order memory bRedeemOrder,
-            ILevelMinting.Signature memory bTakerSignature2
-        ) = redeem_setup(secondRedeemAmount, _stETHToDeposit, 2, true);
+        ILevelMinting.Order memory bRedeemOrder = redeem_setup(
+            secondRedeemAmount,
+            _stETHToDeposit,
+            2,
+            true
+        );
 
         vm.prank(redeemer);
-        LevelMintingContract.redeem(bRedeemOrder, bTakerSignature2);
+        LevelMintingContract.redeem(bRedeemOrder);
 
         assertEq(
             LevelMintingContract.mintedPerBlock(block.number),
@@ -184,14 +184,16 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         vm.prank(owner);
         LevelMintingContract.setMaxMintPerBlock(excessiveRedeemAmount);
 
-        (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(excessiveRedeemAmount, _stETHToDeposit, 1, false);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            excessiveRedeemAmount,
+            _stETHToDeposit,
+            1,
+            false
+        );
 
         vm.startPrank(redeemer);
         vm.expectRevert(MaxRedeemPerBlockExceeded);
-        LevelMintingContract.redeem(redeemOrder, takerSignature2);
+        LevelMintingContract.redeem(redeemOrder);
 
         assertEq(
             stETHToken.balanceOf(address(LevelMintingContract)),
@@ -217,13 +219,15 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
             redeemAmount < LevelMintingContract.maxRedeemPerBlock() &&
                 redeemAmount > 0
         );
-        (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(redeemAmount, _stETHToDeposit, 1, false);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            redeemAmount,
+            _stETHToDeposit,
+            1,
+            false
+        );
 
         vm.startPrank(redeemer);
-        LevelMintingContract.redeem(redeemOrder, takerSignature2);
+        LevelMintingContract.redeem(redeemOrder);
 
         vm.roll(block.number + 1);
 

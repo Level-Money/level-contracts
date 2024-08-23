@@ -61,8 +61,7 @@ interface ILevelMinting is ILevelMintingEvents {
     function hashOrder(Order calldata order) external view returns (bytes32);
 
     function verifyOrder(
-        Order calldata order,
-        Signature calldata signature
+        Order calldata order
     ) external view returns (bool, bytes32);
 
     function verifyRoute(
@@ -75,14 +74,7 @@ interface ILevelMinting is ILevelMintingEvents {
         uint256 nonce
     ) external view returns (bool, uint256, uint256, uint256);
 
-    function mint(
-        Order calldata order,
-        Route calldata route,
-        Signature calldata signature
-    ) external;
+    function mint(Order calldata order, Route calldata route) external;
 
-    function redeem(
-        Order calldata order,
-        Signature calldata signature
-    ) external;
+    function redeem(Order calldata order) external;
 }

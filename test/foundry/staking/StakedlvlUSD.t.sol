@@ -7,7 +7,6 @@ import {SigUtils} from "../../utils/SigUtils.sol";
 
 import "../../../src/lvlUSD.sol";
 import "../../../src/StakedlvlUSD.sol";
-import "../../../src/Slasher.sol";
 import "../../../src/interfaces/IlvlUSD.sol";
 import "../../../src/interfaces/IERC20Events.sol";
 import "../../../src/interfaces/IStakedlvlUSDCooldown.sol";
@@ -15,7 +14,6 @@ import "../../../src/interfaces/IStakedlvlUSDCooldown.sol";
 contract StakedlvlUSDTest is Test, IERC20Events {
     lvlUSD public lvlUSDToken;
     StakedlvlUSD public stakedlvlUSD;
-    Slasher public slasher;
     SigUtils public sigUtilslvlUSD;
     SigUtils public sigUtilsStakedlvlUSD;
 
@@ -44,10 +42,7 @@ contract StakedlvlUSDTest is Test, IERC20Events {
         uint256 assets,
         uint256 shares
     );
-    event RewardsReceived(
-        uint256 indexed amount,
-        uint256 newVestinglvlUSDAmount
-    );
+    event RewardsReceived(uint256 indexed amount);
 
     function setUp() public virtual {
         lvlUSDToken = new lvlUSD(address(this));
@@ -72,19 +67,15 @@ contract StakedlvlUSDTest is Test, IERC20Events {
             rewarder,
             owner
         );
-        slasher = new Slasher(owner, address(lvlUSDToken));
 
         sigUtilslvlUSD = new SigUtils(lvlUSDToken.DOMAIN_SEPARATOR());
         sigUtilsStakedlvlUSD = new SigUtils(stakedlvlUSD.DOMAIN_SEPARATOR());
 
         lvlUSDToken.setMinter(address(this));
-        lvlUSDToken.setSlasher(address(slasher));
-
-        vm.prank(owner);
-        stakedlvlUSD.setFreezablePercentage(5_000);
     }
 
     function _mintApproveDeposit(address staker, uint256 amount) internal {
+        lvlUSDToken.setMinter(address(this));
         lvlUSDToken.mint(staker, amount);
 
         vm.startPrank(staker);
@@ -119,7 +110,7 @@ contract StakedlvlUSDTest is Test, IERC20Events {
         vm.expectEmit(true, false, false, true);
         emit Transfer(rewarder, address(stakedlvlUSD), amount);
         vm.expectEmit(true, false, false, false);
-        emit RewardsReceived(amount, expectedNewVestingAmount);
+        emit RewardsReceived(amount);
 
         stakedlvlUSD.transferInRewards(amount);
 
@@ -213,241 +204,6 @@ contract StakedlvlUSDTest is Test, IERC20Events {
         assertEq(stakedlvlUSD.balanceOf(alice), amount);
         _assertVestedAmountIs(amount);
         assertEq(lvlUSDToken.balanceOf(bob), rewardAmount);
-    }
-
-    function testOnlyFreezerCanFreezeAndUnfreeze() public {
-        lvlUSDToken.mint(address(stakedlvlUSD), 1000);
-
-        // test that non-freezer cannot freeze funds
-
-        vm.startPrank(bob);
-        vm.expectRevert(
-            "AccessControl: account 0x72c7a47c5d01bddf9067eabb345f5daabdead13f is missing role 0x92de27771f92d6942691d73358b3a4673e4880de8356f8f2cf452be87e02d363"
-        );
-        stakedlvlUSD.freeze(400);
-        vm.stopPrank();
-
-        // grant freezer role to freezer account
-
-        vm.startPrank(owner);
-        stakedlvlUSD.grantRole(FREEZER_ROLE, freezer);
-        vm.stopPrank();
-
-        // test that freezer can freeze funds
-
-        vm.startPrank(freezer);
-        stakedlvlUSD.freeze(400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 600);
-        vm.stopPrank();
-
-        // test that non-freezer cannot unfreeze funds
-
-        vm.startPrank(bob);
-        vm.expectRevert(
-            "AccessControl: account 0x72c7a47c5d01bddf9067eabb345f5daabdead13f is missing role 0x92de27771f92d6942691d73358b3a4673e4880de8356f8f2cf452be87e02d363"
-        );
-        stakedlvlUSD.transferInFrozenFunds(1);
-        vm.stopPrank();
-
-        // test that freezer can unfreeze funds
-
-        vm.startPrank(freezer);
-        stakedlvlUSD.transferInFrozenFunds(200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 800);
-
-        // test that the vesting of unfrozen funds is linear
-
-        vm.warp(2 hours);
-        _assertVestedAmountIs(650);
-
-        vm.warp(4 hours);
-        _assertVestedAmountIs(700);
-
-        vm.warp(6 hours);
-        _assertVestedAmountIs(750);
-
-        vm.warp(8 hours);
-        _assertVestedAmountIs(800);
-
-        vm.stopPrank();
-    }
-
-    function testSlasherCanWithdrawFromFreezerAndBurn() public {
-        lvlUSDToken.mint(address(stakedlvlUSD), 1000);
-
-        // grant freezer role to freezer account
-        vm.startPrank(owner);
-        stakedlvlUSD.grantRole(FREEZER_ROLE, freezer);
-        vm.stopPrank();
-
-        // freeze funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.freeze(400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 600);
-        vm.stopPrank();
-
-        vm.startPrank(owner);
-        slasher.addFreezer(address(stakedlvlUSD.freezer()));
-        slasher.withdrawFromFreezer(address(stakedlvlUSD.freezer()), 100);
-
-        // confirm that freezer and slasher balances are correct
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 300);
-        assertEq(lvlUSDToken.balanceOf(address(slasher)), 100);
-
-        // slasher can burn lvlUSD
-        slasher.burn(51);
-        assertEq(lvlUSDToken.balanceOf(address(slasher)), 49);
-
-        // slasher can return lvlUSD to freezer
-        slasher.withdraw(address(stakedlvlUSD.freezer()), 19);
-        assertEq(lvlUSDToken.balanceOf(address(slasher)), 30);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 319);
-
-        vm.stopPrank();
-    }
-
-    function testOnlyFreezerRoleCanFreezeAndUnfreeze() public {
-        lvlUSDToken.mint(address(stakedlvlUSD), 1000);
-        lvlUSDToken.mint(rewarder, 1000);
-
-        // grant freezer and rewarder roles
-        vm.startPrank(owner);
-        stakedlvlUSD.grantRole(FREEZER_ROLE, freezer);
-        stakedlvlUSD.grantRole(REWARDER_ROLE, rewarder);
-        vm.stopPrank();
-
-        // freeze funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.freeze(400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 600);
-        vm.stopPrank();
-
-        // unfreeze funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.transferInFrozenFunds(200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 800);
-        vm.stopPrank();
-
-        // transfer in rewards
-        vm.startPrank(rewarder);
-        lvlUSDToken.approve(address(stakedlvlUSD), 1 ether);
-        stakedlvlUSD.transferInRewards(100);
-        assertEq(lvlUSDToken.balanceOf(rewarder), 900);
-        vm.stopPrank();
-
-        // test that lvlUSD from freezer and rewards both vest linearly
-
-        vm.warp(2 hours);
-        _assertVestedAmountIs(675);
-
-        vm.warp(4 hours);
-        _assertVestedAmountIs(750);
-
-        vm.warp(6 hours);
-        _assertVestedAmountIs(825);
-
-        vm.warp(8 hours);
-        _assertVestedAmountIs(900);
-    }
-
-    function testUnfreezeAndTransferInRewardsSimultaneously() public {
-        lvlUSDToken.mint(address(stakedlvlUSD), 1000);
-        lvlUSDToken.mint(rewarder, 1000);
-
-        // grant freezer and rewarder roles
-        vm.startPrank(owner);
-        stakedlvlUSD.grantRole(FREEZER_ROLE, freezer);
-        stakedlvlUSD.grantRole(REWARDER_ROLE, rewarder);
-        vm.stopPrank();
-
-        // freeze funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.freeze(400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 600);
-        vm.stopPrank();
-
-        // unfreeze funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.transferInFrozenFunds(200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 800);
-        vm.stopPrank();
-
-        // transfer in rewards
-        vm.startPrank(rewarder);
-        lvlUSDToken.approve(address(stakedlvlUSD), 1 ether);
-        stakedlvlUSD.transferInRewards(100);
-        assertEq(lvlUSDToken.balanceOf(rewarder), 900);
-        vm.stopPrank();
-
-        // test that lvlUSD from freezer and rewards both vest linearly
-
-        vm.warp(2 hours);
-        _assertVestedAmountIs(675);
-
-        vm.warp(4 hours);
-        _assertVestedAmountIs(750);
-
-        vm.warp(6 hours);
-        _assertVestedAmountIs(825);
-
-        vm.warp(8 hours);
-        _assertVestedAmountIs(900);
-    }
-
-    function testUnfreezeAndTransferInRewardsStaggered() public {
-        lvlUSDToken.mint(address(stakedlvlUSD), 1000);
-        lvlUSDToken.mint(rewarder, 1000);
-
-        // grant freezer and rewarder roles
-        vm.startPrank(owner);
-        stakedlvlUSD.grantRole(FREEZER_ROLE, freezer);
-        stakedlvlUSD.grantRole(REWARDER_ROLE, rewarder);
-        vm.stopPrank();
-
-        // freeze funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.freeze(400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 400);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 600);
-        vm.stopPrank();
-
-        // unfreeze funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.transferInFrozenFunds(200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())), 200);
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 800);
-        vm.stopPrank();
-
-        // start transferring in rewards 2 hours after unfreezing funds
-        vm.warp(2 hours);
-
-        // transfer in rewards
-        vm.startPrank(rewarder);
-        lvlUSDToken.approve(address(stakedlvlUSD), 1 ether);
-        stakedlvlUSD.transferInRewards(100);
-        assertEq(lvlUSDToken.balanceOf(rewarder), 900);
-        vm.stopPrank();
-
-        // test that lvlUSD from freezer and rewards both vest linearly
-
-        vm.warp(4 hours);
-        _assertVestedAmountIs(725);
-
-        vm.warp(6 hours);
-        _assertVestedAmountIs(800);
-
-        vm.warp(8 hours);
-        _assertVestedAmountIs(875);
-
-        vm.warp(10 hours);
-        _assertVestedAmountIs(900);
     }
 
     function testStakingAndUnstakingBeforeAfterReward() public {
@@ -760,6 +516,10 @@ contract StakedlvlUSDTest is Test, IERC20Events {
         assertEq(stakedlvlUSD.vestingAmount(), 100 ether);
     }
 
+    function testDummy() public {
+        _transferRewards(100 ether, 100 ether);
+    }
+
     function testCanTransferRewardsAfterVesting() public {
         _transferRewards(100 ether, 100 ether);
         vm.warp(block.timestamp + 8 hours);
@@ -885,94 +645,6 @@ contract StakedlvlUSDTest is Test, IERC20Events {
         stakedlvlUSD.unstake(bob);
         assertEq(lvlUSDToken.balanceOf(bob), 5 ether);
 
-        vm.stopPrank();
-    }
-
-    function testUnstakeWhileFrozenFundsAreThawing() public {
-        vm.startPrank(owner);
-        // set cooldown duration to be 7 days
-        stakedlvlUSD.setCooldownDuration(7 days);
-        // set freezer role
-        stakedlvlUSD.grantRole(FREEZER_ROLE, freezer);
-        vm.stopPrank();
-
-        uint256 amount = 100 ether;
-        _mintApproveDeposit(alice, amount);
-        assertEq(stakedlvlUSD.balanceOf(alice), amount);
-
-        // freeze 10 ether worth of funds
-        vm.startPrank(freezer);
-        stakedlvlUSD.freeze(10 ether);
-        assertEq(
-            lvlUSDToken.balanceOf(address(stakedlvlUSD.freezer())),
-            10 ether
-        );
-        assertEq(lvlUSDToken.balanceOf(address(stakedlvlUSD)), 90 ether);
-        vm.stopPrank();
-
-        // initialize unstaking process
-        vm.startPrank(alice);
-        // initiate share cooldown process in anticipation of unstaking
-        stakedlvlUSD.cooldownShares(10 ether, alice);
-        // check that shares have been transferred from Alice
-        assertEq(stakedlvlUSD.balanceOf(alice), 90 ether);
-        // check that shares have indeed been escrowed to the silo
-        assertEq(
-            stakedlvlUSD.balanceOf(address(stakedlvlUSD.silo())),
-            10 ether
-        );
-        // check that assets cannot be unstaked before cooldown period ends
-        vm.warp(6 days);
-        vm.expectRevert(IStakedlvlUSDCooldown.InvalidCooldown.selector);
-        stakedlvlUSD.unstake(alice);
-        vm.stopPrank();
-
-        // transfer in frozen funds 4 hours before cooldown period ends
-        vm.warp(6 days + 20 hours);
-        vm.startPrank(freezer);
-        stakedlvlUSD.transferInFrozenFunds(6 ether);
-
-        // check that about half of frozen funds have thawed 4 hours later, and that the thawed amount can be withdrawn
-        vm.warp(7 days + 1 seconds);
-        vm.startPrank(alice);
-        stakedlvlUSD.unstake(alice);
-        // balance should be very close to 9.3 ether (exact value is 9300020833333333333)
-        assertApproxEqRel(
-            lvlUSDToken.balanceOf(alice),
-            9300000000000000000,
-            10000000000000
-        );
-        vm.stopPrank();
-    }
-
-    function test_OnlyOwnerCanSetFreezablePercentage() public {
-        vm.startPrank(owner);
-        stakedlvlUSD.setFreezablePercentage(50);
-        assertEq(stakedlvlUSD.freezablePercentage(), 50);
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-        vm.expectRevert(
-            "AccessControl: account 0xb742c2a92b070997def5fb9e125039a4498834d9 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
-        );
-        stakedlvlUSD.setFreezablePercentage(60);
-        vm.stopPrank();
-    }
-
-    function test_cantFreezeMoreThanFreezablePercentage() public {
-        vm.startPrank(owner);
-        // set cooldown duration to be 7 days
-        stakedlvlUSD.setCooldownDuration(7 days);
-        // set freezer role
-        stakedlvlUSD.grantRole(FREEZER_ROLE, freezer);
-        vm.stopPrank();
-
-        uint256 amount = 100 ether;
-        _mintApproveDeposit(alice, amount);
-
-        vm.startPrank(freezer);
-        vm.expectRevert(IStakedlvlUSD.ExceedsFreezable.selector);
-        stakedlvlUSD.freeze(51 ether);
         vm.stopPrank();
     }
 }

@@ -24,51 +24,6 @@ contract LevelMintingACLTest is LevelMintingUtils {
         lvlusdToken.mint(address(trader2), 2000 * 1e18);
     }
 
-    function test_redeem_notRedeemer_revert() public {
-        (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
-
-        vm.startPrank(minter);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(minter),
-                    " is missing role ",
-                    vm.toString(redeemerRole)
-                )
-            )
-        );
-        LevelMintingContract.redeem(redeemOrder, takerSignature2);
-    }
-
-    function test_fuzz_notMinter_cannot_mint(address nonMinter) public {
-        (
-            ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Signature memory takerSignature,
-            ILevelMinting.Route memory route
-        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
-
-        vm.assume(nonMinter != minter);
-        vm.startPrank(nonMinter);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(nonMinter),
-                    " is missing role ",
-                    vm.toString(minterRole)
-                )
-            )
-        );
-        LevelMintingContract.mint(mintOrder, route, takerSignature);
-
-        assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
-        assertEq(lvlusdToken.balanceOf(beneficiary), 0);
-    }
-
     function test_fuzz_nonOwner_cannot_add_supportedAsset_revert(
         address nonOwner
     ) public {
@@ -219,17 +174,16 @@ contract LevelMintingACLTest is LevelMintingUtils {
 
         (
             ILevelMinting.Order memory order,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
         vm.expectRevert(MaxMintPerBlockExceeded);
-        LevelMintingContract.mint(order, route, takerSignature);
+        LevelMintingContract.mint(order, route);
 
         vm.prank(redeemer);
         vm.expectRevert(MaxRedeemPerBlockExceeded);
-        LevelMintingContract.redeem(order, takerSignature);
+        LevelMintingContract.redeem(order);
 
         assertEq(
             LevelMintingContract.maxMintPerBlock(),
@@ -290,7 +244,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
         );
     }
 
-    function test_admin_can_disable_redeem(bool performCheckRedeem) public {
+    function test_admin_can_disable__redeem(bool performCheckRedeem) public {
         vm.prank(owner);
         LevelMintingContract.setMaxRedeemPerBlock(0);
 
@@ -360,7 +314,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
     ) public {
         vm.assume(notAdmin != owner);
 
-        test_admin_can_disable_redeem(false);
+        test_admin_can_disable__redeem(false);
 
         vm.prank(notAdmin);
         vm.expectRevert(
@@ -384,7 +338,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
         );
     }
 
-    function test_admin_can_enable_redeem() public {
+    function test_admin_can_enable__redeem() public {
         vm.startPrank(owner);
         LevelMintingContract.setMaxRedeemPerBlock(0);
 
@@ -762,7 +716,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
     }
 
     function testCorrectInitConfig() public {
-        LevelMinting levelMinting2 = new LevelMinting(
+        LevelMinting levelMinting2 = new LevelMintingChild(
             IlvlUSD(address(lvlusdToken)),
             assets,
             custodians,

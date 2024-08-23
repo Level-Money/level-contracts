@@ -151,22 +151,14 @@ contract LevelMinting is
     /**
      * @notice Mint stablecoins from assets
      * @param order struct containing order details and confirmation from server
-     * @param signature signature of the taker
      * @param route the addresses to which the collateral should be sent (and ratios describing the amount to send to each address)
      */
-    function mint(
+    function _mint(
         Order calldata order,
-        Route calldata route,
-        Signature calldata signature
-    )
-        external
-        override
-        nonReentrant
-        onlyRole(MINTER_ROLE)
-        belowMaxMintPerBlock(order.lvlusd_amount)
-    {
+        Route calldata route
+    ) internal nonReentrant belowMaxMintPerBlock(order.lvlusd_amount) {
         if (order.order_type != OrderType.MINT) revert InvalidOrder();
-        verifyOrder(order, signature);
+        verifyOrder(order);
         if (!verifyRoute(route, order.order_type)) revert InvalidRoute();
         _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the minted amount in this block
@@ -189,23 +181,20 @@ contract LevelMinting is
         );
     }
 
+    function mint(Order calldata order, Route calldata route) external virtual {
+        // TODO: use oracle to determine acceptable collateral_amount and lvlusd_amount
+        assert(order.collateral_amount == order.lvlusd_amount);
+        _mint(order, route);
+    }
+
     /**
      * @notice Redeem stablecoins for assets
      * @param order struct containing order details and confirmation from server
-     * @param signature signature of the taker
      */
-    function redeem(
-        Order calldata order,
-        Signature calldata signature
-    )
-        external
-        override
-        nonReentrant
-        onlyRole(REDEEMER_ROLE)
-        belowMaxRedeemPerBlock(order.lvlusd_amount)
-    {
+    function _redeem(
+        Order calldata order
+    ) internal nonReentrant belowMaxRedeemPerBlock(order.lvlusd_amount) {
         if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
-        verifyOrder(order, signature);
         _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the redeemed amount in this block
         redeemedPerBlock[block.number] += order.lvlusd_amount;
@@ -223,6 +212,12 @@ contract LevelMinting is
             order.collateral_amount,
             order.lvlusd_amount
         );
+    }
+
+    function redeem(Order calldata order) external virtual {
+        // TODO: use oracle to determine acceptable collateral_amount and lvlusd_amount
+        assert(order.collateral_amount == order.lvlusd_amount);
+        _redeem(order);
     }
 
     /// @notice Sets the max mintPerBlock limit
@@ -377,18 +372,9 @@ contract LevelMinting is
 
     /// @notice assert validity of signed order
     function verifyOrder(
-        Order calldata order,
-        Signature calldata signature
+        Order calldata order
     ) public view override returns (bool, bytes32) {
         bytes32 taker_order_hash = hashOrder(order);
-        address signer = ECDSA.recover(
-            taker_order_hash,
-            signature.signature_bytes
-        );
-        if (
-            !(signer == order.benefactor ||
-                delegatedSigner[signer][order.benefactor])
-        ) revert InvalidSignature();
         if (order.beneficiary == address(0)) revert InvalidAmount();
         if (order.collateral_amount == 0) revert InvalidAmount();
         if (order.lvlusd_amount == 0) revert InvalidAmount();
