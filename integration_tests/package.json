@@ -4,7 +4,7 @@
   "description": "utility scripts for interacting with contracts",
   "main": "./dist/index.js",
   "scripts": {
-    "mocha": "mocha --require ts-node/register --timeout 10000 ./*test.ts"
+    "test": "mocha --require ts-node/register --timeout 10000 ./*test.ts"
   },
   "author": "",
   "license": "ISC",
