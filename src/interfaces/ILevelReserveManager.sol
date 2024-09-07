@@ -39,8 +39,4 @@ interface ILevelReserveManager {
         address spender,
         uint256 amount
     ) external;
-
-    // setters
-
-    function setRoute(ILevelMinting.Route memory newRoute) external;
 }
