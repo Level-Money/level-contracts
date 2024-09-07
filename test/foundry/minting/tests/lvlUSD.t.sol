@@ -68,7 +68,7 @@ contract lvlUSDTest is Test, IlvlUSDDefinitions, LevelMintingUtils {
         _burnerContract = address(new MockSlasher());
     }
 
-    function testCorrectInitialConfig() public {
+    function testCorrectInitialConfig() public view {
         assertEq(_lvlusdToken.owner(), _owner);
         assertEq(_lvlusdToken.minter(), _minter);
     }

@@ -43,8 +43,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(ALLOWLIST_ROLE, _allowlister);
 
-        // TODO: grant approvals for transferring lvlUSD to stakedlvlUSD from this contract
-
         address[] memory addresses = new address[](1);
         addresses[0] = address(this);
         uint256[] memory ratios = new uint256[](1);
@@ -90,7 +88,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         allowlist[recipient] = false;
     }
 
-    // deposit USDT to symbiotic vault
     function depositToSymbiotic(
         address vault,
         uint256 amount
@@ -99,7 +96,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         emit DepositedToSymbiotic(amount, vault);
     }
 
-    // withdraw USDT from symbiotic vault
     function withdrawFromSymbiotic(
         address vault,
         uint256 amount
