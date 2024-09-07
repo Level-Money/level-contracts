@@ -1,40 +1,53 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.19;
 
-// currently the LRM only supports USDT
+import "./ILevelMinting.sol";
+
 interface ILevelReserveManager {
     error InvalidAmount();
     error InvalidZeroAddress();
     error InvalidlvlUSDAddress();
+    error InvalidRecipient();
+    error ZeroExcessAToken();
+    error InsufficientATokensInReserve();
+
+    event DepositedToSymbiotic(uint256 amount, address symbioticVault);
+    event WithdrawnFromSymbiotic(uint256 amount, address symbioticVault);
+    event ClaimedFromSymbiotic(
+        uint256 epoch,
+        uint256 amount,
+        address symbioticVault
+    );
+    event DepositedToKarak(uint256 amount, address karakVault);
+    event RedeemFromKarakStarted(uint256 shares, address karakVault);
+    event RedeemFromKarakFinished(address karakVault, bytes32 withdrawalKey);
+
+    event DepositedToLevelMinting(uint256 amount);
+    event DepositedToStakedlvlUSD(uint256 amount);
 
     // deposit and withdraw functions
-    function depositToAave(uint256 amount) external; // deposit USDT to Aave pool
+    function depositToSymbiotic(address vault, uint256 amount) external;
 
-    function withdrawFromAave(uint256 amount) external; // withdraw from Aave pool
+    function withdrawFromSymbiotic(address vault, uint256 amount) external;
 
-    function depositToSymbiotic(uint256 amount) external; // deposit USDT to symbiotic vault
+    function claimFromSymbiotic(address vault, uint256 epoch) external;
 
-    function withdrawFromSymbiotic(uint256 amount) external; // withdraw USDT from symbiotic vault
+    function depositToLevelMinting(address token, uint256 amount) external;
 
-    function depositToLevelMinting(uint256 amount) external; //deposit USDT to LevelMinting
+    function depositToStakedlvlUSD(uint256 amount) external;
 
-    function depositToStakedlvlUSD(uint256 amount) external; // deposit lvlUSD to stakedlvlUSD
+    // minting function
+    function mintlvlUSD(address collateral, uint256 amount) external;
 
-    function convertATokenTolvlUSDAndDepositIntoStakedlvlUSD() external;
-
-    // conversion functions
-    function convertAUSDTtolvlUSD() external returns (uint256);
+    // approval function
+    function approveSpender(
+        address token,
+        address spender,
+        uint256 amount
+    ) external;
 
     // setters
-    function setSymbioticVaultAddress(address newAddress) external;
-
-    function setLevelMintingAddress(address newAddress) external;
-
-    function setAaveV3PoolAddress(address newAddress) external;
-
     function setStakedlvlUSDAddress(address newAddress) external;
 
-    function setUsdtAddress(address newAddress) external;
-
-    function setATokenAddress(address newAddress) external;
+    function setRoute(ILevelMinting.Route memory newRoute) external;
 }

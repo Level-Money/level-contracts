@@ -4,111 +4,160 @@ pragma solidity >=0.8.19;
 import "./interfaces/ILevelReserveManager.sol";
 import "./SingleAdminAccessControl.sol";
 import "./interfaces/IlvlUSD.sol";
-import "./interfaces/IAaveV3Pool.sol";
 import "./interfaces/ILevelMinting.sol";
 import "./interfaces/IStakedlvlUSD.sol";
-import "./interfaces/ISymbioticVault.sol";
+import "./interfaces/ISymbioticVault.sol" as ISymbioticVault;
+import "./interfaces/IKarakVault.sol" as IKarakVault;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
- * @title Level Minting Contract
- * @notice This contract issues and redeems lvlUSD for/from other accepted stablecoins
- * @dev Changelog: change name to LevelMinting and lvlUSD, update solidity versions
+ * @title Level Reserve Manager
+ * @notice This contract stores and manages reserves from minted lvlUSD
  */
 contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
     using SafeERC20 for IERC20;
+    using SafeERC20 for ERC20;
+
+    /// @notice role that sets the addresses where funds can be sent from this contract
+    bytes32 private constant ALLOWLIST_ROLE = keccak256("ALLOWLIST_ROLE");
 
     /* --------------- STATE VARIABLES --------------- */
 
     IlvlUSD public immutable lvlusd;
-    IPool public aavePool;
-    ILevelMinting public levelMinting;
     IStakedlvlUSD public stakedlvlUSD;
-    IVault public symbioticVault;
-    address usdt; // usdt token address
-    address aaveAToken; // AToken corresponding to usdt
-    uint256 aaveNetAmountDeposited;
+    uint256 nonce = 1; // for LevelMinting
+    ILevelMinting.Route route;
+    mapping(address => bool) public allowlist;
 
     /* --------------- CONSTRUCTOR --------------- */
 
     constructor(
         IlvlUSD _lvlusd,
-        IPool _aavePool,
-        ILevelMinting _levelMinting,
         IStakedlvlUSD _stakedlvlUSD,
         address _admin,
-        address _usdt,
-        address _aaveAToken
+        address _allowlister
     ) {
         if (address(_lvlusd) == address(0)) revert InvalidlvlUSDAddress();
         if (_admin == address(0)) revert InvalidZeroAddress();
         lvlusd = _lvlusd;
-        aavePool = _aavePool;
-        levelMinting = _levelMinting;
         stakedlvlUSD = _stakedlvlUSD;
-        usdt = _usdt;
-        aaveAToken = _aaveAToken;
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(ALLOWLIST_ROLE, _allowlister);
 
-        if (msg.sender != _admin) {
-            _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        } else {
-            _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        }
         // TODO: grant approvals for transferring lvlUSD to stakedlvlUSD from this contract
-    }
 
-    /* --------------- INTERNAL --------------- */
-
-    function _calculateExcessAaveAToken() internal view returns (uint256) {
-        return
-            IERC20(aaveAToken).balanceOf(address(this)) -
-            aaveNetAmountDeposited;
-    }
-
-    function _withdrawFromAave(uint256 amount) internal {
-        aavePool.withdraw(usdt, amount, address(this));
-        aaveNetAmountDeposited -= amount;
+        address[] memory addresses = new address[](1);
+        addresses[0] = address(this);
+        uint256[] memory ratios = new uint256[](1);
+        ratios[0] = 10000;
+        route = ILevelMinting.Route(addresses, ratios);
     }
 
     /* --------------- EXTERNAL --------------- */
 
-    // deposit USDT to Aave pool
-    // https://docs.aave.com/developers/deployed-contracts/v3-testnet-addresses
-    function depositToAave(
-        uint256 amount
+    function transferERC20(
+        address tokenAddress,
+        address tokenReceiver,
+        uint256 tokenAmount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        aavePool.supply(usdt, amount, address(this), 0);
-        aaveNetAmountDeposited += amount;
+        if (allowlist[tokenReceiver]) {
+            IERC20(tokenAddress).safeTransfer(tokenReceiver, tokenAmount);
+        } else {
+            revert InvalidRecipient();
+        }
     }
 
-    // withdraw from Aave pool
-    function withdrawFromAave(
-        uint256 amount
+    function transferEth(
+        address payable _to,
+        uint _amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _withdrawFromAave(amount);
+        if (allowlist[_to]) {
+            (bool success, ) = _to.call{value: _amount}("");
+            require(success, "Failed to send Ether");
+        } else {
+            revert InvalidRecipient();
+        }
+    }
+
+    function addToAllowList(
+        address recipient
+    ) external onlyRole(ALLOWLIST_ROLE) {
+        allowlist[recipient] = true;
+    }
+
+    function removeFromAllowList(
+        address recipient
+    ) external onlyRole(ALLOWLIST_ROLE) {
+        allowlist[recipient] = false;
     }
 
     // deposit USDT to symbiotic vault
     function depositToSymbiotic(
+        address vault,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        symbioticVault.deposit(address(this), amount);
+        ISymbioticVault.IVault(vault).deposit(address(this), amount);
+        emit DepositedToSymbiotic(amount, vault);
     }
 
     // withdraw USDT from symbiotic vault
     function withdrawFromSymbiotic(
+        address vault,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        symbioticVault.withdraw(address(this), amount);
+        ISymbioticVault.IVault(vault).withdraw(address(this), amount);
+        emit WithdrawnFromSymbiotic(amount, vault);
+    }
+
+    // claim collateral from Symbiotic
+    function claimFromSymbiotic(
+        address vault,
+        uint256 epoch
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 amount = ISymbioticVault.IVault(vault).claim(
+            address(this),
+            epoch
+        );
+        emit ClaimedFromSymbiotic(epoch, amount, vault);
+    }
+
+    function depositToKarak(
+        address vault,
+        uint256 amount
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        IKarakVault.IVault(vault).deposit(amount, address(this));
+        emit DepositedToKarak(amount, vault);
+    }
+
+    function startRedeemFromKarak(
+        address vault,
+        uint256 shares
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (bytes32 withdrawalKey) {
+        withdrawalKey = IKarakVault.IVault(vault).startRedeem(
+            shares,
+            address(this)
+        );
+        emit RedeemFromKarakStarted(shares, vault);
+    }
+
+    function finishRedeemFromKarak(
+        address vault,
+        bytes32 withdrawalKey
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        IKarakVault.IVault(vault).finishRedeem(withdrawalKey);
+        emit RedeemFromKarakFinished(vault, withdrawalKey);
     }
 
     //deposit USDT to LevelMinting
     function depositToLevelMinting(
+        address token,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(usdt).transfer(address(levelMinting), amount);
+        IERC20(token).transfer(address(lvlusd.minter()), amount);
+        emit DepositedToLevelMinting(amount);
     }
 
     // deposit lvlUSD to stakedlvlUSD
@@ -118,46 +167,42 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         stakedlvlUSD.transferInRewards(amount);
     }
 
-    function convertAUSDTtolvlUSD()
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-        returns (uint256)
-    {
-        // 1. compute excess ATokens
-        uint256 amount = _calculateExcessAaveAToken();
-
-        // 2. burn all excess ATokens and withdraw collateral from AAVE
-        _withdrawFromAave(amount);
-
-        // 3. mint lvlUSD via LevelMinting
-        ILevelMinting.Order memory order = ILevelMinting.Order(
-            ILevelMinting.OrderType.MINT,
-            999999999999, // expiry
-            block.timestamp, // nonce,
-            address(this),
-            address(this),
-            address(usdt), // collateral
-            amount, // collateral amount
-            amount // lvlusd_amount
-        );
-        address[] memory addresses = new address[](1);
-        addresses[0] = address(this);
-        uint256[] memory ratios = new uint256[](1);
-        ratios[0] = 10000;
-        ILevelMinting.Route memory route = ILevelMinting.Route(
-            addresses,
-            ratios
-        );
-        levelMinting.mint(order, route);
-        return amount;
+    function _depositToStakedlvlUSD(uint256 amount) internal {
+        stakedlvlUSD.transferInRewards(amount);
+        emit DepositedToStakedlvlUSD(amount);
     }
 
-    function convertATokenTolvlUSDAndDepositIntoStakedlvlUSD()
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        uint256 amount = this.convertAUSDTtolvlUSD();
-        this.depositToStakedlvlUSD(amount);
+    function _mintlvlUSD(address collateral, uint256 amount) internal {
+        uint256 collateral_decimals = ERC20(collateral).decimals();
+        uint256 lvlUSD_decimals = lvlusd.decimals();
+        uint lvlusd_amount = amount;
+        if (collateral_decimals < lvlUSD_decimals) {
+            lvlusd_amount =
+                amount *
+                (10 ** (lvlUSD_decimals - collateral_decimals));
+        } else if (collateral_decimals > lvlUSD_decimals) {
+            lvlusd_amount =
+                amount /
+                (10 ** (collateral_decimals - lvlUSD_decimals));
+        }
+        ILevelMinting.Order memory order = ILevelMinting.Order(
+            ILevelMinting.OrderType.MINT,
+            nonce, // nonce,
+            address(this), // benefactor
+            address(this), // beneficiary
+            collateral, // collateral
+            amount, // collateral amount
+            lvlusd_amount // lvlusd_amount
+        );
+        nonce = nonce + 1;
+        ILevelMinting(lvlusd.minter()).mint(order, route);
+    }
+
+    function mintlvlUSD(
+        address collateral,
+        uint256 amount
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _mintlvlUSD(collateral, amount);
     }
 
     function approveSpender(
@@ -165,28 +210,10 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         address spender,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(token).approve(spender, amount);
+        IERC20(token).forceApprove(spender, amount);
     }
 
     /* --------------- SETTERS --------------- */
-
-    function setSymbioticVaultAddress(
-        address newAddress
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        symbioticVault = IVault(newAddress);
-    }
-
-    function setLevelMintingAddress(
-        address newAddress
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        levelMinting = ILevelMinting(newAddress);
-    }
-
-    function setAaveV3PoolAddress(
-        address newAddress
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        aavePool = IPool(newAddress);
-    }
 
     function setStakedlvlUSDAddress(
         address newAddress
@@ -194,15 +221,9 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         stakedlvlUSD = IStakedlvlUSD(newAddress);
     }
 
-    function setUsdtAddress(
-        address newAddress
+    function setRoute(
+        ILevelMinting.Route memory newRoute
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        usdt = newAddress;
-    }
-
-    function setATokenAddress(
-        address newAddress
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        aaveAToken = newAddress;
+        route = newRoute;
     }
 }

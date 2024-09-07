@@ -30,7 +30,6 @@ interface ILevelMinting is ILevelMintingEvents {
 
     struct Order {
         OrderType order_type;
-        uint256 expiry;
         uint256 nonce;
         address benefactor;
         address beneficiary;
@@ -39,21 +38,26 @@ interface ILevelMinting is ILevelMintingEvents {
         uint256 lvlusd_amount;
     }
 
+    struct UserCooldown {
+        uint104 cooldownEnd;
+        Order order;
+    }
+
     error Duplicate();
     error InvalidAddress();
     error InvalidlvlUSDAddress();
     error InvalidZeroAddress();
     error InvalidAssetAddress();
-    error InvalidCustodianAddress();
+    error InvalidReserveAddress();
     error InvalidOrder();
     error InvalidAffirmedAmount();
     error InvalidAmount();
     error InvalidRoute();
     error UnsupportedAsset();
     error NoAssetsProvided();
-    error InvalidSignature();
+    error InvalidCooldown();
+    error OperationNotAllowed();
     error InvalidNonce();
-    error SignatureExpired();
     error TransferFailed();
     error MaxMintPerBlockExceeded();
     error MaxRedeemPerBlockExceeded();
@@ -76,5 +80,7 @@ interface ILevelMinting is ILevelMintingEvents {
 
     function mint(Order calldata order, Route calldata route) external;
 
-    function redeem(Order calldata order) external;
+    function initiateRedeem(Order memory order) external;
+
+    function completeRedeem(address token) external;
 }

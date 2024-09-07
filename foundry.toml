@@ -7,9 +7,3 @@ libs = ["lib"]
 max_test_rejects = 655360
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
-[remappings]
-"ds-test/" = "lib/ds-test/src/"
-"forge-std/" = "lib/forge-std/src/"
-"@openzeppelin/contracts/" = "lib/openzeppelin-contracts/contracts/"
-
-# Add any other configurations you might have here

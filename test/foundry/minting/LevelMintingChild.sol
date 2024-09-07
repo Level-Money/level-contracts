@@ -2,13 +2,13 @@
 pragma solidity >=0.8.19;
 import "../../../src/LevelMinting.sol";
 
-// This contract inherits from LevelMinting and wraps the internal functions __mint and
-// __redeem in an external function so that they can be tested.
+// This contract inherits from LevelMinting and wraps the internal functions _mint and
+// _redeem in an external function so that they can be tested.
 contract LevelMintingChild is LevelMinting {
     constructor(
         IlvlUSD _lvlusd,
         address[] memory _assets,
-        address[] memory _custodians,
+        address[] memory _reserves,
         address _admin,
         uint256 _maxMintPerBlock,
         uint256 _maxRedeemPerBlock
@@ -16,7 +16,7 @@ contract LevelMintingChild is LevelMinting {
         LevelMinting(
             _lvlusd,
             _assets,
-            _custodians,
+            _reserves,
             _admin,
             _maxMintPerBlock,
             _maxRedeemPerBlock

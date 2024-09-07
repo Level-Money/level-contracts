@@ -33,6 +33,48 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         );
     }
 
+    function test_initiate_and_complete_redeem() public {
+        vm.prank(owner);
+        LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            50 ether,
+            50 ether,
+            1,
+            false
+        );
+        vm.prank(owner);
+        LevelMintingContract.grantRole(redeemerRole, redeemer);
+        vm.stopPrank();
+        vm.startPrank(redeemer);
+        LevelMintingContract.initiateRedeem(redeemOrder);
+        vm.warp(8 days);
+        uint bal = stETHToken.balanceOf(beneficiary);
+        LevelMintingContract.completeRedeem(redeemOrder.collateral_asset);
+        uint new_val = stETHToken.balanceOf(beneficiary);
+        assertEq(new_val - bal, 50 ether);
+        vm.stopPrank();
+    }
+
+    function test_initiate_and_complete_redeem_revert() public {
+        vm.prank(owner);
+        LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            50 ether,
+            50 ether,
+            1,
+            false
+        );
+        vm.prank(owner);
+        LevelMintingContract.grantRole(redeemerRole, redeemer);
+        vm.stopPrank();
+        vm.startPrank(redeemer);
+        LevelMintingContract.initiateRedeem(redeemOrder);
+        vm.warp(6 days); // not enough time as passed!
+        vm.expectRevert(InvalidCooldown);
+        LevelMintingContract.completeRedeem(redeemOrder.collateral_asset);
+        vm.stopPrank();
+    }
+
     function test_redeem_invalidNonce_revert() public {
         // Unset the max redeem per block limit
         vm.prank(owner);
@@ -57,7 +99,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            expiry: block.timestamp + 10 minutes,
             nonce: 8,
             benefactor: benefactor,
             beneficiary: benefactor,
@@ -95,7 +136,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         //redeem
         ILevelMinting.Order memory redeemOrder = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.REDEEM,
-            expiry: block.timestamp + 10 minutes,
             nonce: 800,
             benefactor: benefactor,
             beneficiary: benefactor,
@@ -138,11 +178,10 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         assertEq(lvlusdToken.balanceOf(beneficiary), expectedAmount);
     }
 
-    function test_multipleValid_custodyRatios_addresses() public {
+    function test_multipleValid_reserveRatios_addresses() public {
         uint256 _smallUsdeToMint = 1.75 * 10 ** 23;
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            expiry: block.timestamp + 10 minutes,
             nonce: 14,
             benefactor: benefactor,
             beneficiary: beneficiary,
@@ -153,8 +192,8 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         address[] memory targets = new address[](3);
         targets[0] = address(LevelMintingContract);
-        targets[1] = custodian1;
-        targets[2] = custodian2;
+        targets[1] = reserve1;
+        targets[2] = reserve2;
 
         uint256[] memory ratios = new uint256[](3);
         ratios[0] = 3_000;
@@ -179,7 +218,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.mint(order, route);
 
         vm.prank(owner);
-        LevelMintingContract.addCustodianAddress(custodian2);
+        LevelMintingContract.addReserveAddress(reserve2);
 
         vm.prank(minter);
         LevelMintingContract.mint(order, route);
@@ -188,11 +227,11 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         assertEq(lvlusdToken.balanceOf(beneficiary), _smallUsdeToMint);
 
         assertEq(
-            stETHToken.balanceOf(address(custodian1)),
+            stETHToken.balanceOf(address(reserve1)),
             (_stETHToDeposit * 4) / 10
         );
         assertEq(
-            stETHToken.balanceOf(address(custodian2)),
+            stETHToken.balanceOf(address(reserve2)),
             (_stETHToDeposit * 3) / 10
         );
         assertEq(
@@ -200,16 +239,16 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             (_stETHToDeposit * 3) / 10
         );
 
-        // remove custodian and expect reversion
+        // remove reserve and expect reversion
         vm.prank(owner);
-        LevelMintingContract.removeCustodianAddress(custodian2);
+        LevelMintingContract.removeReserveAddress(reserve2);
 
         vm.prank(minter);
         vm.expectRevert(InvalidRoute);
         LevelMintingContract.mint(order, route);
     }
 
-    function test_fuzz_multipleInvalid_custodyRatios_revert(
+    function test_fuzz_multipleInvalid_reserveRatios_revert(
         uint256 ratio1
     ) public {
         ratio1 = bound(ratio1, 0, UINT256_MAX - 7_000);
@@ -217,7 +256,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory mintOrder = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            expiry: block.timestamp + 10 minutes,
             nonce: 15,
             benefactor: benefactor,
             beneficiary: beneficiary,
@@ -257,14 +295,13 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         assertEq(stETHToken.balanceOf(owner), 0);
     }
 
-    function test_fuzz_singleInvalid_custodyRatio_revert(
+    function test_fuzz_singleInvalid_reserveRatio_revert(
         uint256 ratio1
     ) public {
         vm.assume(ratio1 != 10_000);
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            expiry: block.timestamp + 10 minutes,
             nonce: 16,
             benefactor: benefactor,
             beneficiary: beneficiary,
@@ -310,7 +347,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            expiry: block.timestamp + 10 minutes,
             nonce: 18,
             benefactor: benefactor,
             beneficiary: beneficiary,
@@ -350,7 +386,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            expiry: block.timestamp + 10 minutes,
             nonce: 19,
             benefactor: benefactor,
             beneficiary: beneficiary,
@@ -378,21 +413,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         vm.recordLogs();
         vm.expectRevert(UnsupportedAsset);
-        vm.prank(minter);
-        LevelMintingContract.mint(order, route);
-        vm.getRecordedLogs();
-    }
-
-    function test_expired_orders_revert() public {
-        (
-            ILevelMinting.Order memory order,
-            ILevelMinting.Route memory route
-        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
-
-        vm.warp(block.timestamp + 11 minutes);
-
-        vm.recordLogs();
-        vm.expectRevert(SignatureExpired);
         vm.prank(minter);
         LevelMintingContract.mint(order, route);
         vm.getRecordedLogs();
@@ -491,8 +511,8 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         address[] memory targets = new address[](3);
         targets[0] = address(LevelMintingContract);
-        targets[1] = custodian1;
-        targets[2] = custodian2;
+        targets[1] = reserve1;
+        targets[2] = reserve2;
 
         uint256[] memory ratios = new uint256[](2);
         ratios[0] = 3_000;

@@ -25,11 +25,11 @@ interface ILevelMintingEvents {
         uint256 indexed lvlusd_amount
     );
 
-    /// @notice Event emitted when custody wallet is added
-    event CustodyWalletAdded(address wallet);
+    /// @notice Event emitted when reserve wallet is added
+    event ReserveWalletAdded(address wallet);
 
-    /// @notice Event emitted when a custody wallet is removed
-    event CustodyWalletRemoved(address wallet);
+    /// @notice Event emitted when a reserve wallet is removed
+    event ReserveWalletRemoved(address wallet);
 
     /// @notice Event emitted when a supported asset is added
     event AssetAdded(address indexed asset);
@@ -37,14 +37,14 @@ interface ILevelMintingEvents {
     /// @notice Event emitted when a supported asset is removed
     event AssetRemoved(address indexed asset);
 
-    // @notice Event emitted when a custodian address is added
-    event CustodianAddressAdded(address indexed custodian);
+    // @notice Event emitted when a reserve address is added
+    event ReserveAddressAdded(address indexed reserve);
 
-    // @notice Event emitted when a custodian address is removed
-    event CustodianAddressRemoved(address indexed custodian);
+    // @notice Event emitted when a reserve address is removed
+    event ReserveAddressRemoved(address indexed reserve);
 
-    /// @notice Event emitted when assets are moved to custody provider wallet
-    event CustodyTransfer(
+    /// @notice Event emitted when assets are moved to reserve provider wallet
+    event ReserveTransfer(
         address indexed wallet,
         address indexed asset,
         uint256 amount
@@ -75,5 +75,19 @@ interface ILevelMintingEvents {
     event DelegatedSignerRemoved(
         address indexed signer,
         address indexed delegator
+    );
+
+    event RedeemInitiated(
+        address user,
+        address token,
+        uint collateral_amount,
+        uint lvlusd_amount
+    );
+
+    event RedeemCompleted(
+        address user,
+        address token,
+        uint collateral_amount,
+        uint lvlusd_amount
     );
 }

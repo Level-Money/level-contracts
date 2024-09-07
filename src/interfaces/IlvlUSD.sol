@@ -16,5 +16,5 @@ interface IlvlUSD is IERC20, IERC20Permit, IERC20Metadata {
 
     function setMinter(address newMinter) external;
 
-    function slasher() external returns (address);
+    function minter() external returns (address);
 }
