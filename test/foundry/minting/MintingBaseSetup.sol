@@ -9,25 +9,30 @@ import {stdStorage, StdStorage, Test} from "forge-std/Test.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Utils} from "../../utils/Utils.sol";
-
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "../../mocks/MockToken.sol";
 import "../../../src/lvlUSD.sol";
+import "../../../src/StakedlvlUSD.sol";
+import "../../../src/LevelReserveManager.sol";
 import "../../../src/interfaces/ILevelMinting.sol";
 import "../../../src/interfaces/ILevelMintingEvents.sol";
-import "../../../src/LevelMinting.sol";
+import "../../../src/interfaces/ILevelReserveManager.sol";
+import "./LevelMintingChild.sol";
 import "../../../src/interfaces/ISingleAdminAccessControl.sol";
 import "../../../src/interfaces/IlvlUSDDefinitions.sol";
 
 contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     Utils internal utils;
     lvlUSD internal lvlusdToken;
+    StakedlvlUSD internal stakedlvlUSD;
+    LevelReserveManager internal levelReserveManager;
     MockToken internal stETHToken;
     MockToken internal cbETHToken;
     MockToken internal rETHToken;
     MockToken internal USDCToken;
     MockToken internal USDTToken;
     MockToken internal token;
-    LevelMinting internal LevelMintingContract;
+    LevelMintingChild internal LevelMintingContract;
     SigUtils internal sigUtils;
     SigUtils internal sigUtilslvlUSD;
 
@@ -43,9 +48,10 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     uint256 internal trader2PrivateKey;
     uint256 internal gatekeeperPrivateKey;
     uint256 internal bobPrivateKey;
-    uint256 internal custodian1PrivateKey;
-    uint256 internal custodian2PrivateKey;
+    uint256 internal reserve1PrivateKey;
+    uint256 internal reserve2PrivateKey;
     uint256 internal randomerPrivateKey;
+    address internal poolAddressesProvider;
 
     address internal owner;
     address internal newOwner;
@@ -59,12 +65,12 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     address internal trader2;
     address internal gatekeeper;
     address internal bob;
-    address internal custodian1;
-    address internal custodian2;
+    address internal reserve1;
+    address internal reserve2;
     address internal randomer;
 
     address[] assets;
-    address[] custodians;
+    address[] reserves;
 
     address internal NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
@@ -77,6 +83,8 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     bytes32 internal denylisterRole = keccak256("DENYLIST_MANAGER_ROLE");
 
     // error encodings
+    bytes internal InvalidCooldown =
+        abi.encodeWithSelector(ILevelMinting.InvalidCooldown.selector);
     bytes internal Duplicate =
         abi.encodeWithSelector(ILevelMinting.Duplicate.selector);
     bytes internal InvalidAddress =
@@ -101,12 +109,8 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         abi.encodeWithSelector(ILevelMinting.UnsupportedAsset.selector);
     bytes internal NoAssetsProvided =
         abi.encodeWithSelector(ILevelMinting.NoAssetsProvided.selector);
-    bytes internal InvalidSignature =
-        abi.encodeWithSelector(ILevelMinting.InvalidSignature.selector);
     bytes internal InvalidNonce =
         abi.encodeWithSelector(ILevelMinting.InvalidNonce.selector);
-    bytes internal SignatureExpired =
-        abi.encodeWithSelector(ILevelMinting.SignatureExpired.selector);
     bytes internal MaxMintPerBlockExceeded =
         abi.encodeWithSelector(ILevelMinting.MaxMintPerBlockExceeded.selector);
     bytes internal MaxRedeemPerBlockExceeded =
@@ -117,7 +121,9 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     bytes internal OnlyMinterErr =
         abi.encodeWithSelector(IlvlUSDDefinitions.OnlyMinter.selector);
     bytes internal ZeroAddressExceptionErr =
-        abi.encodeWithSelector(IlvlUSDDefinitions.ZeroAddressException.selector);
+        abi.encodeWithSelector(
+            IlvlUSDDefinitions.ZeroAddressException.selector
+        );
     bytes internal OperationNotAllowedErr =
         abi.encodeWithSelector(IlvlUSDDefinitions.OperationNotAllowed.selector);
     bytes internal IsOwnerErr =
@@ -129,7 +135,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         keccak256("Route(address[] addresses,uint256[] ratios)");
     bytes32 internal constant ORDER_TYPE =
         keccak256(
-            "Order(uint256 expiry,uint256 nonce,address benefactor,address beneficiary,address asset,uint256 base_amount,uint256 quote_amount)"
+            "Order(uint256 nonce,address benefactor,address beneficiary,address asset,uint256 base_amount,uint256 quote_amount)"
         );
 
     uint256 internal _slippageRange = 50000000000000000;
@@ -201,8 +207,8 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         trader2PrivateKey = 0x1DEA;
         gatekeeperPrivateKey = 0x1DEA1;
         bobPrivateKey = 0x1DEA2;
-        custodian1PrivateKey = 0x1DCDE;
-        custodian2PrivateKey = 0x1DCCE;
+        reserve1PrivateKey = 0x1DCDE;
+        reserve2PrivateKey = 0x1DCCE;
         randomerPrivateKey = 0x1DECC;
 
         owner = vm.addr(ownerPrivateKey);
@@ -217,12 +223,12 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         trader2 = vm.addr(trader2PrivateKey);
         gatekeeper = vm.addr(gatekeeperPrivateKey);
         bob = vm.addr(bobPrivateKey);
-        custodian1 = vm.addr(custodian1PrivateKey);
-        custodian2 = vm.addr(custodian2PrivateKey);
+        reserve1 = vm.addr(reserve1PrivateKey);
+        reserve2 = vm.addr(reserve2PrivateKey);
         randomer = vm.addr(randomerPrivateKey);
 
-        custodians = new address[](1);
-        custodians[0] = custodian1;
+        reserves = new address[](1);
+        reserves[0] = reserve1;
 
         vm.label(minter, "minter");
         vm.label(redeemer, "redeemer");
@@ -235,16 +241,16 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         vm.label(trader2, "trader2");
         vm.label(gatekeeper, "gatekeeper");
         vm.label(bob, "bob");
-        vm.label(custodian1, "custodian1");
-        vm.label(custodian2, "custodian2");
+        vm.label(reserve1, "reserve1");
+        vm.label(reserve2, "reserve2");
         vm.label(randomer, "randomer");
 
         // Set the roles
         vm.startPrank(owner);
-        LevelMintingContract = new LevelMinting(
+        LevelMintingContract = new LevelMintingChild(
             IlvlUSD(address(lvlusdToken)),
             assets,
-            custodians,
+            reserves,
             owner,
             _maxMintPerBlock,
             _maxRedeemPerBlock
@@ -259,11 +265,29 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         // Set the max redeem per block
         LevelMintingContract.setMaxRedeemPerBlock(_maxRedeemPerBlock);
 
-        // Add self as approved custodian
-        LevelMintingContract.addCustodianAddress(address(LevelMintingContract));
+        // Add self as approved reserve
+        LevelMintingContract.addReserveAddress(address(LevelMintingContract));
 
         // Mint stEth to the benefactor in order to test
         stETHToken.mint(_stETHToDeposit, benefactor);
+
+        stakedlvlUSD = new StakedlvlUSD(
+            IlvlUSD(address(lvlusdToken)),
+            owner,
+            owner
+        );
+
+        // set up level reserve manager
+        levelReserveManager = new LevelReserveManager(
+            IlvlUSD(address(lvlusdToken)),
+            stakedlvlUSD,
+            address(owner),
+            address(owner)
+        );
+        USDCToken.mint(100000000, address(levelReserveManager));
+
+        LevelMintingContract.addReserveAddress(address(levelReserveManager));
+
         vm.stopPrank();
 
         lvlusdToken.setMinter(address(LevelMintingContract));
@@ -308,13 +332,11 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         public
         returns (
             ILevelMinting.Order memory order,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         )
     {
         order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            expiry: block.timestamp + 10 minutes,
             nonce: nonce,
             benefactor: benefactor,
             beneficiary: beneficiary,
@@ -332,12 +354,6 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         route = ILevelMinting.Route({addresses: targets, ratios: ratios});
 
         vm.startPrank(benefactor);
-        bytes32 digest1 = LevelMintingContract.hashOrder(order);
-        takerSignature = signOrder(
-            benefactorPrivateKey,
-            digest1,
-            ILevelMinting.SignatureType.EIP712
-        );
         stETHToken.approve(address(LevelMintingContract), collateralAmount);
         vm.stopPrank();
 
@@ -366,26 +382,17 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         uint256 collateralAmount,
         uint256 nonce,
         bool multipleRedeem
-    )
-        public
-        returns (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        )
-    {
+    ) public returns (ILevelMinting.Order memory redeemOrder) {
         (
             ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         ) = mint_setup(lvlusdAmount, collateralAmount, nonce, false);
-
         vm.prank(minter);
-        LevelMintingContract.mint(mintOrder, route, takerSignature);
+        LevelMintingContract.mint(mintOrder, route);
 
         //redeem
         redeemOrder = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.REDEEM,
-            expiry: block.timestamp + 10 minutes,
             nonce: nonce + 1,
             benefactor: beneficiary,
             beneficiary: beneficiary,
@@ -397,15 +404,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         // taker
         vm.startPrank(beneficiary);
         lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
-
-        bytes32 digest3 = LevelMintingContract.hashOrder(redeemOrder);
-        takerSignature2 = signOrder(
-            beneficiaryPrivateKey,
-            digest3,
-            ILevelMinting.SignatureType.EIP712
-        );
         vm.stopPrank();
-
         vm.startPrank(owner);
         LevelMintingContract.grantRole(redeemerRole, redeemer);
         vm.stopPrank();

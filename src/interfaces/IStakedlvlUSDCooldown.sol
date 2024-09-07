@@ -6,7 +6,7 @@ import "./IStakedlvlUSD.sol";
 
 struct UserCooldown {
     uint104 cooldownEnd;
-    uint256 underlyingShares;
+    uint256 underlyingAmount;
 }
 
 interface IStakedlvlUSDCooldown is IStakedlvlUSD {
@@ -24,15 +24,9 @@ interface IStakedlvlUSDCooldown is IStakedlvlUSD {
     /// @notice Error emitted when cooldown value is invalid
     error InvalidCooldown();
 
-    function cooldownAssets(
-        uint256 assets,
-        address owner
-    ) external returns (uint256 shares);
+    function cooldownAssets(uint256 assets) external returns (uint256 shares);
 
-    function cooldownShares(
-        uint256 shares,
-        address owner
-    ) external returns (uint256 assets);
+    function cooldownShares(uint256 shares) external returns (uint256 assets);
 
     function unstake(address receiver) external;
 

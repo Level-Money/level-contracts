@@ -1,29 +1,30 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
+/* solhint-disable var-name-mixedcase  */
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IslvlUSDSiloDefinitions.sol";
 
 /**
  * @title USDeSilo
- * @notice The Silo allows to store slvlUSD during the stake cooldown process.
+ * @notice The Silo allows to store USDe during the stake cooldown process.
  */
 contract slvlUSDSilo is IslvlUSDSiloDefinitions {
-    using SafeERC20 for IERC20;
+    address immutable _STAKING_VAULT;
+    IERC20 immutable _lvlUSD;
 
-    address immutable STAKING_VAULT;
-
-    constructor(address stakingVault) {
-        STAKING_VAULT = stakingVault;
+    constructor(address stakingVault, address lvlUSD) {
+        _STAKING_VAULT = stakingVault;
+        _lvlUSD = IERC20(lvlUSD);
     }
 
     modifier onlyStakingVault() {
-        if (msg.sender != STAKING_VAULT) revert OnlyStakingVault();
+        if (msg.sender != _STAKING_VAULT) revert OnlyStakingVault();
         _;
     }
 
     function withdraw(address to, uint256 amount) external onlyStakingVault {
-        IERC20(STAKING_VAULT).transfer(to, amount);
+        _lvlUSD.transfer(to, amount);
     }
 }

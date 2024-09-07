@@ -24,51 +24,6 @@ contract LevelMintingACLTest is LevelMintingUtils {
         lvlusdToken.mint(address(trader2), 2000 * 1e18);
     }
 
-    function test_redeem_notRedeemer_revert() public {
-        (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
-
-        vm.startPrank(minter);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(minter),
-                    " is missing role ",
-                    vm.toString(redeemerRole)
-                )
-            )
-        );
-        LevelMintingContract.redeem(redeemOrder, takerSignature2);
-    }
-
-    function test_fuzz_notMinter_cannot_mint(address nonMinter) public {
-        (
-            ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Signature memory takerSignature,
-            ILevelMinting.Route memory route
-        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
-
-        vm.assume(nonMinter != minter);
-        vm.startPrank(nonMinter);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(nonMinter),
-                    " is missing role ",
-                    vm.toString(minterRole)
-                )
-            )
-        );
-        LevelMintingContract.mint(mintOrder, route, takerSignature);
-
-        assertEq(stETHToken.balanceOf(benefactor), _stETHToDeposit);
-        assertEq(lvlusdToken.balanceOf(beneficiary), 0);
-    }
-
     function test_fuzz_nonOwner_cannot_add_supportedAsset_revert(
         address nonOwner
     ) public {
@@ -97,15 +52,13 @@ contract LevelMintingACLTest is LevelMintingUtils {
         assertTrue(LevelMintingContract.isSupportedAsset(asset));
     }
 
-    function test_minter_canTransfer_custody() public {
+    function test_owner_canTransfer_reserve() public {
         vm.startPrank(owner);
         stETHToken.mint(1000, address(LevelMintingContract));
-        LevelMintingContract.addCustodianAddress(beneficiary);
-        vm.stopPrank();
-        vm.prank(minter);
+        LevelMintingContract.addReserveAddress(beneficiary);
         vm.expectEmit(true, true, true, true);
-        emit CustodyTransfer(beneficiary, address(stETHToken), 1000);
-        LevelMintingContract.transferToCustody(
+        emit ReserveTransfer(beneficiary, address(stETHToken), 1000);
+        LevelMintingContract.transferToReserve(
             beneficiary,
             address(stETHToken),
             1000
@@ -114,24 +67,24 @@ contract LevelMintingACLTest is LevelMintingUtils {
         assertEq(stETHToken.balanceOf(address(LevelMintingContract)), 0);
     }
 
-    function test_fuzz_nonMinter_cannot_transferCustody_revert(
-        address nonMinter
+    function test_fuzz_nonAdmin_cannot_transferReserve_revert(
+        address nonAdmin
     ) public {
-        vm.assume(nonMinter != minter);
+        vm.assume(nonAdmin != owner);
         stETHToken.mint(1000, address(LevelMintingContract));
 
         vm.expectRevert(
             bytes(
                 string.concat(
                     "AccessControl: account ",
-                    Strings.toHexString(nonMinter),
+                    Strings.toHexString(nonAdmin),
                     " is missing role ",
-                    vm.toString(minterRole)
+                    vm.toString(adminRole)
                 )
             )
         );
-        vm.prank(nonMinter);
-        LevelMintingContract.transferToCustody(
+        vm.prank(nonAdmin);
+        LevelMintingContract.transferToReserve(
             beneficiary,
             address(stETHToken),
             1000
@@ -141,58 +94,6 @@ contract LevelMintingACLTest is LevelMintingUtils {
     /**
      * Gatekeeper tests
      */
-
-    function test_gatekeeper_can_remove_minter() public {
-        vm.prank(gatekeeper);
-
-        LevelMintingContract.removeMinterRole(minter);
-        assertFalse(LevelMintingContract.hasRole(minterRole, minter));
-    }
-
-    function test_gatekeeper_can_remove_redeemer() public {
-        vm.prank(gatekeeper);
-
-        LevelMintingContract.removeRedeemerRole(redeemer);
-        assertFalse(LevelMintingContract.hasRole(redeemerRole, redeemer));
-    }
-
-    function test_fuzz_not_gatekeeper_cannot_remove_minter_revert(
-        address notGatekeeper
-    ) public {
-        vm.assume(notGatekeeper != gatekeeper);
-        vm.startPrank(notGatekeeper);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(notGatekeeper),
-                    " is missing role ",
-                    vm.toString(gatekeeperRole)
-                )
-            )
-        );
-        LevelMintingContract.removeMinterRole(minter);
-        assertTrue(LevelMintingContract.hasRole(minterRole, minter));
-    }
-
-    function test_fuzz_not_gatekeeper_cannot_remove_redeemer_revert(
-        address notGatekeeper
-    ) public {
-        vm.assume(notGatekeeper != gatekeeper);
-        vm.startPrank(notGatekeeper);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(notGatekeeper),
-                    " is missing role ",
-                    vm.toString(gatekeeperRole)
-                )
-            )
-        );
-        LevelMintingContract.removeRedeemerRole(redeemer);
-        assertTrue(LevelMintingContract.hasRole(redeemerRole, redeemer));
-    }
 
     function test_gatekeeper_cannot_add_minters_revert() public {
         vm.startPrank(gatekeeper);
@@ -219,17 +120,16 @@ contract LevelMintingACLTest is LevelMintingUtils {
 
         (
             ILevelMinting.Order memory order,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
         vm.expectRevert(MaxMintPerBlockExceeded);
-        LevelMintingContract.mint(order, route, takerSignature);
+        LevelMintingContract.mint(order, route);
 
         vm.prank(redeemer);
         vm.expectRevert(MaxRedeemPerBlockExceeded);
-        LevelMintingContract.redeem(order, takerSignature);
+        LevelMintingContract.redeem(order);
 
         assertEq(
             LevelMintingContract.maxMintPerBlock(),
@@ -290,7 +190,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
         );
     }
 
-    function test_admin_can_disable_redeem(bool performCheckRedeem) public {
+    function test_admin_can_disable__redeem(bool performCheckRedeem) public {
         vm.prank(owner);
         LevelMintingContract.setMaxRedeemPerBlock(0);
 
@@ -360,7 +260,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
     ) public {
         vm.assume(notAdmin != owner);
 
-        test_admin_can_disable_redeem(false);
+        test_admin_can_disable__redeem(false);
 
         vm.prank(notAdmin);
         vm.expectRevert(
@@ -384,7 +284,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
         );
     }
 
-    function test_admin_can_enable_redeem() public {
+    function test_admin_can_enable__redeem() public {
         vm.startPrank(owner);
         LevelMintingContract.setMaxRedeemPerBlock(0);
 
@@ -405,31 +305,6 @@ contract LevelMintingACLTest is LevelMintingUtils {
             LevelMintingContract.maxRedeemPerBlock() > 0,
             "The redeeming should be enabled"
         );
-    }
-
-    function test_admin_can_add_minter() public {
-        vm.startPrank(owner);
-        LevelMintingContract.grantRole(minterRole, bob);
-
-        assertTrue(
-            LevelMintingContract.hasRole(minterRole, bob),
-            "Bob should have the minter role"
-        );
-        vm.stopPrank();
-    }
-
-    function test_admin_can_remove_minter() public {
-        test_admin_can_add_minter();
-
-        vm.startPrank(owner);
-        LevelMintingContract.revokeRole(minterRole, bob);
-
-        assertFalse(
-            LevelMintingContract.hasRole(minterRole, bob),
-            "Bob should no longer have the minter role"
-        );
-
-        vm.stopPrank();
     }
 
     function test_admin_can_add_gatekeeper() public {
@@ -457,30 +332,6 @@ contract LevelMintingACLTest is LevelMintingUtils {
         vm.stopPrank();
     }
 
-    function test_fuzz_notAdmin_cannot_remove_minter(address notAdmin) public {
-        test_admin_can_add_minter();
-
-        vm.assume(notAdmin != owner);
-        vm.startPrank(notAdmin);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(notAdmin),
-                    " is missing role ",
-                    vm.toString(adminRole)
-                )
-            )
-        );
-        LevelMintingContract.revokeRole(minterRole, bob);
-
-        assertTrue(
-            LevelMintingContract.hasRole(minterRole, bob),
-            "Bob should maintain the minter role"
-        );
-        vm.stopPrank();
-    }
-
     function test_fuzz_notAdmin_cannot_remove_gatekeeper(
         address notAdmin
     ) public {
@@ -505,28 +356,6 @@ contract LevelMintingACLTest is LevelMintingUtils {
             "Bob should maintain the gatekeeper role"
         );
 
-        vm.stopPrank();
-    }
-
-    function test_fuzz_notAdmin_cannot_add_minter(address notAdmin) public {
-        vm.assume(notAdmin != owner);
-        vm.startPrank(notAdmin);
-        vm.expectRevert(
-            bytes(
-                string.concat(
-                    "AccessControl: account ",
-                    Strings.toHexString(notAdmin),
-                    " is missing role ",
-                    vm.toString(adminRole)
-                )
-            )
-        );
-        LevelMintingContract.grantRole(minterRole, bob);
-
-        assertFalse(
-            LevelMintingContract.hasRole(minterRole, bob),
-            "Bob should lack the minter role"
-        );
         vm.stopPrank();
     }
 
@@ -612,39 +441,11 @@ contract LevelMintingACLTest is LevelMintingUtils {
         LevelMintingContract.revokeRole(adminRole, owner);
     }
 
-    function test_grantRole_nonAdminRole() public {
-        vm.prank(owner);
-        LevelMintingContract.grantRole(minterRole, randomer);
-        assertTrue(LevelMintingContract.hasRole(minterRole, randomer));
-    }
-
-    function test_revokeRole_nonAdminRole() public {
-        vm.startPrank(owner);
-        LevelMintingContract.grantRole(minterRole, randomer);
-        LevelMintingContract.revokeRole(minterRole, randomer);
-        vm.stopPrank();
-        assertFalse(LevelMintingContract.hasRole(minterRole, randomer));
-    }
-
-    function test_renounceRole_nonAdminRole() public {
-        vm.prank(owner);
-        LevelMintingContract.grantRole(minterRole, randomer);
-        vm.prank(randomer);
-        LevelMintingContract.renounceRole(minterRole, randomer);
-        assertFalse(LevelMintingContract.hasRole(minterRole, randomer));
-    }
-
     function testCanRepeatedlyTransferAdmin() public {
         vm.startPrank(owner);
         LevelMintingContract.transferAdmin(newOwner);
         LevelMintingContract.transferAdmin(randomer);
         vm.stopPrank();
-    }
-
-    function test_renounceRole_forDifferentAccount() public {
-        vm.prank(randomer);
-        vm.expectRevert("AccessControl: can only renounce roles for self");
-        LevelMintingContract.renounceRole(minterRole, owner);
     }
 
     function testCancelTransferAdmin() public {
@@ -762,10 +563,10 @@ contract LevelMintingACLTest is LevelMintingUtils {
     }
 
     function testCorrectInitConfig() public {
-        LevelMinting levelMinting2 = new LevelMinting(
+        LevelMinting levelMinting2 = new LevelMintingChild(
             IlvlUSD(address(lvlusdToken)),
             assets,
-            custodians,
+            reserves,
             randomer,
             _maxMintPerBlock,
             _maxRedeemPerBlock

@@ -15,13 +15,12 @@ contract LevelMintingUtils is MintingBaseSetup {
         vm.assume(excessiveMintAmount > LevelMintingContract.maxMintPerBlock());
         (
             ILevelMinting.Order memory order,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         ) = mint_setup(excessiveMintAmount, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
         vm.expectRevert(MaxMintPerBlockExceeded);
-        LevelMintingContract.mint(order, route, takerSignature);
+        LevelMintingContract.mint(order, route);
 
         assertEq(
             lvlusdToken.balanceOf(beneficiary),
@@ -47,14 +46,16 @@ contract LevelMintingUtils is MintingBaseSetup {
         vm.prank(owner);
         LevelMintingContract.setMaxMintPerBlock(excessiveRedeemAmount);
 
-        (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(excessiveRedeemAmount, _stETHToDeposit, 1, false);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            excessiveRedeemAmount,
+            _stETHToDeposit,
+            1,
+            false
+        );
 
         vm.startPrank(redeemer);
         vm.expectRevert(MaxRedeemPerBlockExceeded);
-        LevelMintingContract.redeem(redeemOrder, takerSignature2);
+        LevelMintingContract.redeem(redeemOrder);
 
         assertEq(
             stETHToken.balanceOf(address(LevelMintingContract)),
@@ -78,20 +79,21 @@ contract LevelMintingUtils is MintingBaseSetup {
     function executeMint() public {
         (
             ILevelMinting.Order memory order,
-            ILevelMinting.Signature memory takerSignature,
             ILevelMinting.Route memory route
         ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
 
         vm.prank(minter);
-        LevelMintingContract.mint(order, route, takerSignature);
+        LevelMintingContract.mint(order, route);
     }
 
     function executeRedeem() public {
-        (
-            ILevelMinting.Order memory redeemOrder,
-            ILevelMinting.Signature memory takerSignature2
-        ) = redeem_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            _lvlusdToMint,
+            _stETHToDeposit,
+            1,
+            false
+        );
         vm.prank(redeemer);
-        LevelMintingContract.redeem(redeemOrder, takerSignature2);
+        LevelMintingContract.redeem(redeemOrder);
     }
 }

@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "./interfaces/IlvlUSDDefinitions.sol";
 import "./SingleAdminAccessControl.sol";
-import "forge-std/console.sol";
 
 /**
  * @title lvlUSD
@@ -27,8 +26,6 @@ contract lvlUSD is
 
     address public minter;
 
-    address public slasher;
-
     constructor(
         address admin
     ) ERC20("Level USD", "lvlUSD") ERC20Permit("Level USD") {
@@ -47,13 +44,6 @@ contract lvlUSD is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         emit MinterUpdated(newMinter, minter);
         minter = newMinter;
-    }
-
-    function setSlasher(
-        address newSlasher
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit SlasherUpdated(newSlasher, slasher);
-        slasher = newSlasher;
     }
 
     function mint(address to, uint256 amount) external {
