@@ -17,13 +17,13 @@ The admin can designate up to one _minter_. This designation can be revoked and 
 
 ### Functions
 
-| Functionality                         | Description                                                                                               | Access Control   | # of Roles | Type     |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------- | ---------- | -------- |
-| mint()                                | Adds to lvlUSD supply. Can only be called by a single address (the minting contract).                     | Minting Contract | 1          | Multisig |
-| burn()                                | Decrement’s the caller’s balance to remove lvlUSD from the total supply.                                  | Anyone           | N < 5      | Multisig |
+| Functionality                         | Description                                                                                               | Access Control   |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------- |
+| mint()                                | Adds to lvlUSD supply. Can only be called by a single address (the minting contract).                     | Minting Contract | 1          |  |
+| burn()                                | Decrement’s the caller’s balance to remove lvlUSD from the total supply.                                  | Anyone           |
 | transfer() / transferFrom()           | Transfers lvlUSD from one address to another. This transaction will fail for denylisted addresses         | Anyone           | 1          | Contract |
-| setMinter()                           | Lets the admin designate the single LevelMinting contract that all mints and redemptions will go through. | Admin            |            |          |
-| addToDenylist()/ removeFromDenylist() | Lets the admin denylist an address, preventing it from minting, burning, or transferring any lvlUSD.      | Denylist Manager |            |          |
+| setMinter()                           | Lets the admin designate the single LevelMinting contract that all mints and redemptions will go through. | Admin            |
+| addToDenylist()/ removeFromDenylist() | Lets the admin denylist an address, preventing it from minting, burning, or transferring any lvlUSD.      | Denylist Manager |
 
 ## LevelMinting
 
@@ -34,8 +34,8 @@ The admin can designate up to one _minter_. This designation can be revoked and 
 | Role       | Description                                                                                                                                                                                 | Operators                                           | # of Roles | Type     |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------- | -------- |
 | Admin      | The admin of the contract can: set minters, redeemers, and gatekeepers, add/remove authorized collateral, and add/remove authorized reserve addresses.                                      | Level Foundation                                    | 1          | Multisig |
-| Minter     | Minters are authorized addresses that can call mint() on the LevelMinting contract.                                                                                                         | Level Foundation                                    | N < 20     | EOA      |
-| Redeemer   | Redeemers are authorized addresses that can call redeem() on the LevelMinting contract                                                                                                      | Level Foundation                                    | N < 20     | EOA      |
+| Minter     | Minters are authorized addresses that can call mint() on the LevelMinting contract.                                                                                                         |                                     |     | EOA      |
+| Redeemer   | Redeemers are authorized addresses that can call redeem() on the LevelMinting contract                                                                                                      |                                     |     | EOA      |
 | Gatekeeper | Gatekeepers guard the protocol from unauthorized mints and redemptions. Gatekeeper addresses can stop all issuance, as well as remove the minter and redeemer role from specific addresses. | Level Foundation and 3rd party security contractors | N          | EOA      |
 
 ## Functions
@@ -74,3 +74,4 @@ The admin can designate up to one _minter_. This designation can be revoked and 
 | depositToSymbiotic / withdrawFromSymbiotic / claimFromSymbiotic                              | These functions allow the admin to deposit tokens into a Symbiotic vault and then claim the tokens after initiating the withdraw process and waiting for an epoch to pass.                                                                                                                                                                                                                                                                                                                                                               | Admin       |
 | depositToKarak / startRedeemFromKarak / finishRedeemFromKarak                           | These functions allow the admin to deposit tokens into a Karak vault and then claim the tokens after initiating the withdraw process (obtaining a withdrawal key in the process) and waiting for an cooldown period to end.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Admin         |
 | approveSpender | Approves an external contract to spend funds stored in the reserve manager. It is necessary to approve vaults before depositing into them.                             | Admin                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+
