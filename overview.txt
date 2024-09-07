@@ -4,4 +4,4 @@ and further earn points restaking rewards for users by depositing liquid restaki
 
 LevelMinting is the contract for minting and redeeming lvlUSD. The redemption process has two steps and can take several
 days due to a cooldown period. Collateral provided by users is routed to the LevelReserveManager. An admin multisig wallet
-controls the funds in LevelReserveManager, and can initiate deposits and withdrawals into vaults.
+controls the funds in LevelReserveManager, and can initiate deposits and withdrawals into pools and vaults.
