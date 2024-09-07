@@ -34,8 +34,6 @@ interface ILevelReserveManager {
 
     function depositToLevelMinting(address token, uint256 amount) external;
 
-    function depositToStakedlvlUSD(uint256 amount) external;
-
     // minting function
     function mintlvlUSD(address collateral, uint256 amount) external;
 
@@ -47,7 +45,6 @@ interface ILevelReserveManager {
     ) external;
 
     // setters
-    function setStakedlvlUSDAddress(address newAddress) external;
 
     function setRoute(ILevelMinting.Route memory newRoute) external;
 }
