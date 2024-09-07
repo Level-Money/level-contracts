@@ -23,7 +23,6 @@ interface ILevelReserveManager {
     event RedeemFromKarakFinished(address karakVault, bytes32 withdrawalKey);
 
     event DepositedToLevelMinting(uint256 amount);
-    event DepositedToStakedlvlUSD(uint256 amount);
 
     // deposit and withdraw functions
     function depositToSymbiotic(address vault, uint256 amount) external;
@@ -34,11 +33,6 @@ interface ILevelReserveManager {
 
     function depositToLevelMinting(address token, uint256 amount) external;
 
-    function depositToStakedlvlUSD(uint256 amount) external;
-
-    // minting function
-    function mintlvlUSD(address collateral, uint256 amount) external;
-
     // approval function
     function approveSpender(
         address token,
@@ -47,7 +41,6 @@ interface ILevelReserveManager {
     ) external;
 
     // setters
-    function setStakedlvlUSDAddress(address newAddress) external;
 
     function setRoute(ILevelMinting.Route memory newRoute) external;
 }

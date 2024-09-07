@@ -12,7 +12,6 @@ import {Utils} from "../../utils/Utils.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "../../mocks/MockToken.sol";
 import "../../../src/lvlUSD.sol";
-import "../../../src/StakedlvlUSD.sol";
 import "../../../src/LevelReserveManager.sol";
 import "../../../src/interfaces/ILevelMinting.sol";
 import "../../../src/interfaces/ILevelMintingEvents.sol";
@@ -24,7 +23,6 @@ import "../../../src/interfaces/IlvlUSDDefinitions.sol";
 contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     Utils internal utils;
     lvlUSD internal lvlusdToken;
-    StakedlvlUSD internal stakedlvlUSD;
     LevelReserveManager internal levelReserveManager;
     MockToken internal stETHToken;
     MockToken internal cbETHToken;
@@ -271,16 +269,9 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         // Mint stEth to the benefactor in order to test
         stETHToken.mint(_stETHToDeposit, benefactor);
 
-        stakedlvlUSD = new StakedlvlUSD(
-            IlvlUSD(address(lvlusdToken)),
-            owner,
-            owner
-        );
-
         // set up level reserve manager
         levelReserveManager = new LevelReserveManager(
             IlvlUSD(address(lvlusdToken)),
-            stakedlvlUSD,
             address(owner),
             address(owner)
         );

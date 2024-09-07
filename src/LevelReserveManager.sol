@@ -5,7 +5,6 @@ import "./interfaces/ILevelReserveManager.sol";
 import "./SingleAdminAccessControl.sol";
 import "./interfaces/IlvlUSD.sol";
 import "./interfaces/ILevelMinting.sol";
-import "./interfaces/IStakedlvlUSD.sol";
 import "./interfaces/ISymbioticVault.sol" as ISymbioticVault;
 import "./interfaces/IKarakVault.sol" as IKarakVault;
 
@@ -27,7 +26,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
     /* --------------- STATE VARIABLES --------------- */
 
     IlvlUSD public immutable lvlusd;
-    IStakedlvlUSD public stakedlvlUSD;
     uint256 nonce = 1; // for LevelMinting
     ILevelMinting.Route route;
     mapping(address => bool) public allowlist;
@@ -36,18 +34,14 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
 
     constructor(
         IlvlUSD _lvlusd,
-        IStakedlvlUSD _stakedlvlUSD,
         address _admin,
         address _allowlister
     ) {
         if (address(_lvlusd) == address(0)) revert InvalidlvlUSDAddress();
         if (_admin == address(0)) revert InvalidZeroAddress();
         lvlusd = _lvlusd;
-        stakedlvlUSD = _stakedlvlUSD;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(ALLOWLIST_ROLE, _allowlister);
-
-        // TODO: grant approvals for transferring lvlUSD to stakedlvlUSD from this contract
 
         address[] memory addresses = new address[](1);
         addresses[0] = address(this);
@@ -94,7 +88,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         allowlist[recipient] = false;
     }
 
-    // deposit USDT to symbiotic vault
     function depositToSymbiotic(
         address vault,
         uint256 amount
@@ -103,7 +96,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         emit DepositedToSymbiotic(amount, vault);
     }
 
-    // withdraw USDT from symbiotic vault
     function withdrawFromSymbiotic(
         address vault,
         uint256 amount
@@ -160,51 +152,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         emit DepositedToLevelMinting(amount);
     }
 
-    // deposit lvlUSD to stakedlvlUSD
-    function depositToStakedlvlUSD(
-        uint256 amount
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        stakedlvlUSD.transferInRewards(amount);
-    }
-
-    function _depositToStakedlvlUSD(uint256 amount) internal {
-        stakedlvlUSD.transferInRewards(amount);
-        emit DepositedToStakedlvlUSD(amount);
-    }
-
-    function _mintlvlUSD(address collateral, uint256 amount) internal {
-        uint256 collateral_decimals = ERC20(collateral).decimals();
-        uint256 lvlUSD_decimals = lvlusd.decimals();
-        uint lvlusd_amount = amount;
-        if (collateral_decimals < lvlUSD_decimals) {
-            lvlusd_amount =
-                amount *
-                (10 ** (lvlUSD_decimals - collateral_decimals));
-        } else if (collateral_decimals > lvlUSD_decimals) {
-            lvlusd_amount =
-                amount /
-                (10 ** (collateral_decimals - lvlUSD_decimals));
-        }
-        ILevelMinting.Order memory order = ILevelMinting.Order(
-            ILevelMinting.OrderType.MINT,
-            nonce, // nonce,
-            address(this), // benefactor
-            address(this), // beneficiary
-            collateral, // collateral
-            amount, // collateral amount
-            lvlusd_amount // lvlusd_amount
-        );
-        nonce = nonce + 1;
-        ILevelMinting(lvlusd.minter()).mint(order, route);
-    }
-
-    function mintlvlUSD(
-        address collateral,
-        uint256 amount
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _mintlvlUSD(collateral, amount);
-    }
-
     function approveSpender(
         address token,
         address spender,
@@ -214,12 +161,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
     }
 
     /* --------------- SETTERS --------------- */
-
-    function setStakedlvlUSDAddress(
-        address newAddress
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        stakedlvlUSD = IStakedlvlUSD(newAddress);
-    }
 
     function setRoute(
         ILevelMinting.Route memory newRoute
