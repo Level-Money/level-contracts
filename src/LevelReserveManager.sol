@@ -27,7 +27,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
 
     IlvlUSD public immutable lvlusd;
     uint256 nonce = 1; // for LevelMinting
-    ILevelMinting.Route route;
     mapping(address => bool) public allowlist;
 
     /* --------------- CONSTRUCTOR --------------- */
@@ -42,12 +41,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         lvlusd = _lvlusd;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(ALLOWLIST_ROLE, _allowlister);
-
-        address[] memory addresses = new address[](1);
-        addresses[0] = address(this);
-        uint256[] memory ratios = new uint256[](1);
-        ratios[0] = 10000;
-        route = ILevelMinting.Route(addresses, ratios);
     }
 
     /* --------------- EXTERNAL --------------- */
@@ -158,13 +151,5 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         IERC20(token).forceApprove(spender, amount);
-    }
-
-    /* --------------- SETTERS --------------- */
-
-    function setRoute(
-        ILevelMinting.Route memory newRoute
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        route = newRoute;
     }
 }
