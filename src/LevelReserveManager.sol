@@ -156,39 +156,6 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         emit DepositedToLevelMinting(amount);
     }
 
-    function _mintlvlUSD(address collateral, uint256 amount) internal {
-        uint256 collateral_decimals = ERC20(collateral).decimals();
-        uint256 lvlUSD_decimals = lvlusd.decimals();
-        uint lvlusd_amount = amount;
-        if (collateral_decimals < lvlUSD_decimals) {
-            lvlusd_amount =
-                amount *
-                (10 ** (lvlUSD_decimals - collateral_decimals));
-        } else if (collateral_decimals > lvlUSD_decimals) {
-            lvlusd_amount =
-                amount /
-                (10 ** (collateral_decimals - lvlUSD_decimals));
-        }
-        ILevelMinting.Order memory order = ILevelMinting.Order(
-            ILevelMinting.OrderType.MINT,
-            nonce, // nonce,
-            address(this), // benefactor
-            address(this), // beneficiary
-            collateral, // collateral
-            amount, // collateral amount
-            lvlusd_amount // lvlusd_amount
-        );
-        nonce = nonce + 1;
-        ILevelMinting(lvlusd.minter()).mint(order, route);
-    }
-
-    function mintlvlUSD(
-        address collateral,
-        uint256 amount
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _mintlvlUSD(collateral, amount);
-    }
-
     function approveSpender(
         address token,
         address spender,

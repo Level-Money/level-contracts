@@ -15,15 +15,6 @@ contract LevelReserveManagerTest is MintingBaseSetup {
         );
     }
 
-    function test_mint_collateral_lvlusd_differing_decimals() public {
-        levelReserveManager.mintlvlUSD(address(USDCToken), 1000000);
-        assertEq(
-            lvlusdToken.balanceOf(address(levelReserveManager)),
-            1000000000000000000,
-            "Incorrect reserve lvlUSD balance."
-        );
-    }
-
     function test_deposit_to_level_minting() public {
         vm.startPrank(owner);
         levelReserveManager.depositToLevelMinting(address(USDCToken), 1000000);
@@ -37,14 +28,14 @@ contract LevelReserveManagerTest is MintingBaseSetup {
     function test_transfer_erc20() public {
         vm.startPrank(owner);
         levelReserveManager.addToAllowList(bob);
-        levelReserveManager.mintlvlUSD(address(USDCToken), 1000000);
+        //levelReserveManager.mintlvlUSD(address(USDCToken), 1000000);
         levelReserveManager.transferERC20(address(USDCToken), bob, 999);
         assertEq(USDCToken.balanceOf(bob), 999, "Incorrect USDCToken balance.");
     }
 
     function test_transfer_erc20_reverts() public {
         vm.startPrank(owner);
-        levelReserveManager.mintlvlUSD(address(USDCToken), 1000000);
+        // levelReserveManager.mintlvlUSD(address(USDCToken), 1000000);
         vm.expectRevert();
         levelReserveManager.transferERC20(address(USDCToken), bob, 999);
     }
