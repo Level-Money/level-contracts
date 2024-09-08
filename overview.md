@@ -17,4 +17,4 @@ When funds are deposited into Symbiotic or Karak vaults, they are delegated to n
 
 ### Symbiotic
 - Symbiotic is an accounting and coordination layer for networks, operators, and vaults to work together to provide economic security to networks ([Docs](https://docs.symbiotic.fi/))
-- Source code
+- Source code for [vaults](https://github.com/symbioticfi/core/blob/main/src/contracts/vault/Vault.sol)
