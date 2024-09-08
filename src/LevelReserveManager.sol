@@ -136,12 +136,11 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         emit RedeemFromKarakFinished(vault, withdrawalKey);
     }
 
-    //deposit USDT to LevelMinting
     function depositToLevelMinting(
         address token,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        IERC20(token).transfer(address(lvlusd.minter()), amount);
+        IERC20(token).safeTransfer(address(lvlusd.minter()), amount);
         emit DepositedToLevelMinting(amount);
     }
 

@@ -1,3 +1,5 @@
+## Summary
+
 The Level Protocol allows users to earn yield from restaking protocols and lending protocols by
 staking a stablecoin called lvlUSD. Level will generate returns by lending out its reserves in Aave and Compound,
 and further earn points restaking rewards for users by depositing liquid restaking tokens in Symbiotic, Eigenlayer, and Karak vaults.
@@ -5,3 +7,7 @@ and further earn points restaking rewards for users by depositing liquid restaki
 LevelMinting is the contract for minting and redeeming lvlUSD. The redemption process has two steps and can take several
 days due to a cooldown period. Collateral provided by users is routed to the LevelReserveManager. An admin multisig wallet
 controls the funds in LevelReserveManager, and can initiate deposits and withdrawals into pools and vaults.
+
+## Dependencies
+### Karak
+- Source code for [vaults](https://github.com/code-423n4/2024-07-karak/blob/main/src/interfaces/IVault.sol)
