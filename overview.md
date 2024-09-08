@@ -8,7 +8,7 @@ LevelMinting is the contract for minting and redeeming lvlUSD. The redemption pr
 days due to a cooldown period. Collateral provided by users is routed to the LevelReserveManager. An admin multisig wallet
 controls the funds in LevelReserveManager, and can initiate deposits and withdrawals into pools and vaults.
 
-When funds are deposited into Symbiotic or Karak vaults, they are delegated to networks, for example, actively validated services (AVSes), or operators, who run node network infrastructure. The vaults may accrue rewards, or rewards may be sent to a pre-specified rewards contract. The funds in the vault may also be slashed, depending on the vault implementation.
+When funds are deposited into Symbiotic or Karak vaults, they are delegated to networks, for example, actively validated services (AVSes), or operators, who run node network infrastructure. The vaults may earn rewards, which are sent to a pre-specified rewards contract. The funds in the vault may also be slashed, depending on the vault implementation.
 
 ## Design Considerations and Potential Concerns
 - To migrate the Level Reserve Manager contract, we plan to simply deploy a new contract, and transfer all funds from the previous contract to the new contract by first withdrawing from vaults (possibly waiting for a cooldown period to end), and then using `transferERC20` to transfer the funds to the new contract. We want to make sure that there aren't any edge cases that would prevent an upgrade or migration. We are also considering bricking the previous contract after a new reserve manager has been deployed, or using the OpenZeppelin upgradeable proxy pattern to ensure that an upgrade can go smoothly.
