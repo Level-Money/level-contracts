@@ -1,5 +1,4 @@
 ## Summary
-
 The Level Protocol allows users to earn yield from restaking protocols and lending protocols by
 staking a stablecoin called lvlUSD. Level will generate returns by lending out its reserves in Aave and Compound,
 and further earn points restaking rewards for users by depositing liquid restaking tokens in Symbiotic, Eigenlayer, and Karak vaults.
