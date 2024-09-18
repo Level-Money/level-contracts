@@ -62,10 +62,14 @@ contract DeployMainnet is Script, DeploymentUtils {
         // reserve address
         reserves[0] = address(deployerAddress);
 
+        uint256[] memory _ratios = new uint256[](1);
+        _ratios[0] = uint256(10000);
+
         contracts.levelMintingContract = new LevelMinting(
             ilvlUSD,
             assets,
             reserves,
+            _ratios,
             deployerAddress,
             MAX_LVLUSD_MINT_PER_BLOCK,
             MAX_LVLUSD_REDEEM_PER_BLOCK

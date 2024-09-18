@@ -9,6 +9,7 @@ contract LevelMintingChild is LevelMinting {
         IlvlUSD _lvlusd,
         address[] memory _assets,
         address[] memory _reserves,
+        uint256[] memory _ratios,
         address _admin,
         uint256 _maxMintPerBlock,
         uint256 _maxRedeemPerBlock
@@ -17,6 +18,7 @@ contract LevelMintingChild is LevelMinting {
             _lvlusd,
             _assets,
             _reserves,
+            _ratios,
             _admin,
             _maxMintPerBlock,
             _maxRedeemPerBlock
@@ -31,6 +33,10 @@ contract LevelMintingChild is LevelMinting {
     }
 
     function redeem(Order calldata order) external override {
+        // lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
+        // super.checkCollateralAndlvlUSDAmountEquality(order);
+        // super.checkCollateralAmountIsBelowLimitForRedemption(order);
         super._redeem(order);
+        lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
     }
 }

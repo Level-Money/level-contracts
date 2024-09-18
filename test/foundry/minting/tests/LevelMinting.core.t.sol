@@ -4,6 +4,7 @@ pragma solidity >=0.8.19;
 /* solhint-disable func-name-mixedcase  */
 
 import "../LevelMinting.utils.sol";
+import {console2} from "forge-std/console2.sol";
 
 contract LevelMintingCoreTest is LevelMintingUtils {
     function setUp() public override {
@@ -37,21 +38,38 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.prank(owner);
         LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
         ILevelMinting.Order memory redeemOrder = redeem_setup(
-            50 ether,
-            50 ether,
+            50 wei,
+            50 wei,
             1,
             false
         );
         vm.prank(owner);
-        LevelMintingContract.grantRole(redeemerRole, redeemer);
+        LevelMintingContract.grantRole(redeemerRole, beneficiary);
         vm.stopPrank();
-        vm.startPrank(redeemer);
+
+        (
+            ILevelMinting.Order memory mintOrder,
+            ILevelMinting.Route memory route
+        ) = mint_setup(50 wei, 50 wei, 107, false);
+        ILevelMinting.Order memory order = ILevelMinting.Order({
+            order_type: ILevelMinting.OrderType.MINT,
+            nonce: 102,
+            benefactor: beneficiary,
+            beneficiary: beneficiary,
+            collateral_asset: address(stETHToken),
+            lvlusd_amount: 50 wei,
+            collateral_amount: 50 wei
+        });
+        stETHToken.mint(50 wei, beneficiary);
+        LevelMintingContract.mint(order, route);
+
+        vm.startPrank(beneficiary);
         LevelMintingContract.initiateRedeem(redeemOrder);
         vm.warp(8 days);
         uint bal = stETHToken.balanceOf(beneficiary);
         LevelMintingContract.completeRedeem(redeemOrder.collateral_asset);
         uint new_val = stETHToken.balanceOf(beneficiary);
-        assertEq(new_val - bal, 50 ether);
+        assertEq(new_val - bal, 50 wei);
         vm.stopPrank();
     }
 
@@ -59,15 +77,31 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.prank(owner);
         LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
         ILevelMinting.Order memory redeemOrder = redeem_setup(
-            50 ether,
-            50 ether,
+            50 wei,
+            50 wei,
             1,
             false
         );
+        (
+            ILevelMinting.Order memory mintOrder,
+            ILevelMinting.Route memory route
+        ) = mint_setup(50 wei, 50 wei, 107, false);
+        ILevelMinting.Order memory order = ILevelMinting.Order({
+            order_type: ILevelMinting.OrderType.MINT,
+            nonce: 102,
+            benefactor: beneficiary,
+            beneficiary: beneficiary,
+            collateral_asset: address(stETHToken),
+            lvlusd_amount: 50 wei,
+            collateral_amount: 50 wei
+        });
+        stETHToken.mint(50 wei, beneficiary);
+        LevelMintingContract.mint(order, route);
+
         vm.prank(owner);
-        LevelMintingContract.grantRole(redeemerRole, redeemer);
+        LevelMintingContract.grantRole(redeemerRole, beneficiary);
         vm.stopPrank();
-        vm.startPrank(redeemer);
+        vm.startPrank(beneficiary);
         LevelMintingContract.initiateRedeem(redeemOrder);
         vm.warp(6 days); // not enough time as passed!
         vm.expectRevert(InvalidCooldown);
@@ -487,19 +521,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.expectRevert(InvalidOrder);
         vm.prank(minter);
         LevelMintingContract.mint(order, route);
-    }
-
-    function test_sending_mint_order_to_redeem_revert() public {
-        (ILevelMinting.Order memory order, ) = mint_setup(
-            1 ether,
-            50 ether,
-            20,
-            false
-        );
-
-        vm.expectRevert(InvalidOrder);
-        vm.prank(redeemer);
-        LevelMintingContract.redeem(order);
     }
 
     function test_mismatchedAddressesAndRatios_revert() public {

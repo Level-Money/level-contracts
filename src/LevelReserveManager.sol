@@ -18,7 +18,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  */
 contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
     using SafeERC20 for IERC20;
-    using SafeERC20 for ERC20;
 
     /// @notice role that sets the addresses where funds can be sent from this contract
     bytes32 private constant ALLOWLIST_ROLE = keccak256("ALLOWLIST_ROLE");
@@ -121,6 +120,7 @@ contract LevelReserveManager is ILevelReserveManager, SingleAdminAccessControl {
         address vault,
         uint256 shares
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (bytes32 withdrawalKey) {
+        IERC20(vault).forceApprove(vault, shares);
         withdrawalKey = IKarakVault.IVault(vault).startRedeem(
             shares,
             address(this)

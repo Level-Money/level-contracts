@@ -39,7 +39,7 @@ interface ILevelMinting is ILevelMintingEvents {
     }
 
     struct UserCooldown {
-        uint104 cooldownEnd;
+        uint104 cooldownStart;
         Order order;
     }
 
@@ -61,12 +61,12 @@ interface ILevelMinting is ILevelMintingEvents {
     error TransferFailed();
     error MaxMintPerBlockExceeded();
     error MaxRedeemPerBlockExceeded();
+    error MsgSenderIsNotBenefactor();
+    error InsufficientCollateralDepositedForRedemption();
 
-    function hashOrder(Order calldata order) external view returns (bytes32);
+    // function hashOrder(Order calldata order) external view returns (bytes32);
 
-    function verifyOrder(
-        Order calldata order
-    ) external view returns (bool, bytes32);
+    function verifyOrder(Order calldata order) external view returns (bool);
 
     function verifyRoute(
         Route calldata route,

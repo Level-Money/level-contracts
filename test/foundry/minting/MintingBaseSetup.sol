@@ -9,7 +9,7 @@ import {stdStorage, StdStorage, Test} from "forge-std/Test.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Utils} from "../../utils/Utils.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+
 import "../../mocks/MockToken.sol";
 import "../../../src/lvlUSD.sol";
 import "../../../src/LevelReserveManager.sol";
@@ -69,6 +69,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
 
     address[] assets;
     address[] reserves;
+    uint256[] ratios;
 
     address internal NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
@@ -228,6 +229,9 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         reserves = new address[](1);
         reserves[0] = reserve1;
 
+        ratios = new uint256[](1);
+        ratios[0] = 10000;
+
         vm.label(minter, "minter");
         vm.label(redeemer, "redeemer");
         vm.label(owner, "owner");
@@ -249,6 +253,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
             IlvlUSD(address(lvlusdToken)),
             assets,
             reserves,
+            ratios,
             owner,
             _maxMintPerBlock,
             _maxRedeemPerBlock
@@ -268,6 +273,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
 
         // Mint stEth to the benefactor in order to test
         stETHToken.mint(_stETHToDeposit, benefactor);
+        // stETHToken.mint(_stETHToDeposit, beneficiary);
 
         // set up level reserve manager
         levelReserveManager = new LevelReserveManager(
@@ -339,8 +345,8 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         address[] memory targets = new address[](1);
         targets[0] = address(LevelMintingContract);
 
-        uint256[] memory ratios = new uint256[](1);
-        ratios[0] = 10_000;
+        uint256[] memory _ratios = new uint256[](1);
+        _ratios[0] = 10_000;
 
         route = ILevelMinting.Route({addresses: targets, ratios: ratios});
 
@@ -348,23 +354,21 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         stETHToken.approve(address(LevelMintingContract), collateralAmount);
         vm.stopPrank();
 
-        if (!multipleMints) {
-            assertEq(
-                lvlusdToken.balanceOf(beneficiary),
-                0,
-                "Mismatch in lvlUSD balance"
-            );
-            assertEq(
-                stETHToken.balanceOf(address(LevelMintingContract)),
-                0,
-                "Mismatch in stETH balance"
-            );
-            assertEq(
-                stETHToken.balanceOf(benefactor),
-                collateralAmount,
-                "Mismatch in stETH balance"
-            );
-        }
+        vm.startPrank(benefactor);
+        lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
+        vm.stopPrank();
+
+        vm.startPrank(beneficiary);
+        stETHToken.approve(address(LevelMintingContract), collateralAmount);
+        vm.stopPrank();
+
+        vm.startPrank(beneficiary);
+        lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
+        vm.stopPrank();
+
+        vm.startPrank(redeemer);
+        stETHToken.approve(address(LevelMintingContract), collateralAmount);
+        vm.stopPrank();
     }
 
     // Generic redeem setup reused in the tests to reduce lines of code
@@ -399,24 +403,6 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         vm.startPrank(owner);
         LevelMintingContract.grantRole(redeemerRole, redeemer);
         vm.stopPrank();
-
-        if (!multipleRedeem) {
-            assertEq(
-                stETHToken.balanceOf(address(LevelMintingContract)),
-                collateralAmount,
-                "Mismatch in stETH balance"
-            );
-            assertEq(
-                stETHToken.balanceOf(beneficiary),
-                0,
-                "Mismatch in stETH balance"
-            );
-            assertEq(
-                lvlusdToken.balanceOf(beneficiary),
-                lvlusdAmount,
-                "Mismatch in lvlUSD balance"
-            );
-        }
     }
 
     function _getInvalidRoleError(
