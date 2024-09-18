@@ -567,6 +567,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
             IlvlUSD(address(lvlusdToken)),
             assets,
             reserves,
+            ratios,
             randomer,
             _maxMintPerBlock,
             _maxRedeemPerBlock

@@ -65,14 +65,14 @@ contract LevelMinting is
     /// @notice Supported assets
     EnumerableSet.AddressSet internal _supportedAssets;
 
+    /// @notice Redeemable assets
+    EnumerableSet.AddressSet internal _redeemableAssets;
+
     // @notice reserve addresses
     EnumerableSet.AddressSet internal _reserveAddresses;
 
     /// @notice holds computable chain id
     uint256 private immutable _chainId;
-
-    /// @notice holds computable domain separator
-    bytes32 private immutable _domainSeparator;
 
     /// @notice user deduplication
     mapping(address => mapping(uint256 => uint256)) private _orderBitmaps;
@@ -90,13 +90,18 @@ contract LevelMinting is
     /// @notice max redeemed lvlUSD allowed per block
     uint256 public maxRedeemPerBlock;
 
-    bool private checkMinterRole = true;
-    bool private checkRedeemerRole = true;
+    bool public checkMinterRole = true;
+    bool public checkRedeemerRole = true;
 
     uint24 public constant MAX_COOLDOWN_DURATION = 7 days;
     uint24 public cooldownDuration;
 
     mapping(address => mapping(address => UserCooldown)) public cooldowns;
+    Route _route;
+
+    // user address => token address => net deposited collateral quantity
+    mapping(address => mapping(address => uint256))
+        public netCollateralDeposited;
 
     /* --------------- MODIFIERS --------------- */
 
@@ -148,6 +153,7 @@ contract LevelMinting is
         IlvlUSD _lvlusd,
         address[] memory _assets,
         address[] memory _reserves,
+        uint256[] memory _ratios,
         address _admin,
         uint256 _maxMintPerBlock,
         uint256 _maxRedeemPerBlock
@@ -176,9 +182,10 @@ contract LevelMinting is
         }
 
         _chainId = block.chainid;
-        _domainSeparator = _computeDomainSeparator();
 
         cooldownDuration = MAX_COOLDOWN_DURATION;
+
+        _route = Route(_reserves, _ratios);
 
         emit lvlUSDSet(address(_lvlusd));
     }
@@ -192,8 +199,9 @@ contract LevelMinting is
      */
     function _mint(
         Order calldata order,
-        Route calldata route
+        Route memory route
     ) internal nonReentrant belowMaxMintPerBlock(order.lvlusd_amount) {
+        require(!(lvlusd.denylisted(msg.sender)));
         if (order.order_type != OrderType.MINT) revert InvalidOrder();
         verifyOrder(order);
         if (!verifyRoute(route, order.order_type)) revert InvalidRoute();
@@ -208,6 +216,9 @@ contract LevelMinting is
             route.ratios
         );
         lvlusd.mint(order.beneficiary, order.lvlusd_amount);
+        netCollateralDeposited[order.benefactor][
+            order.collateral_asset
+        ] += order.collateral_amount;
         emit Mint(
             msg.sender,
             order.benefactor,
@@ -220,22 +231,34 @@ contract LevelMinting is
 
     function checkCollateralAndlvlUSDAmountEquality(
         Order memory order
-    ) private view {
+    ) public view {
         uint8 collateral_asset_decimals = ERC20(order.collateral_asset)
             .decimals();
         uint8 lvlusd_decimals = lvlusd.decimals();
         if (collateral_asset_decimals == lvlusd_decimals) {
-            assert(order.collateral_amount == order.lvlusd_amount);
+            require(order.collateral_amount == order.lvlusd_amount);
         } else if (collateral_asset_decimals > lvlusd_decimals) {
             uint8 diff = collateral_asset_decimals - lvlusd_decimals;
-            assert(
+            require(
                 order.collateral_amount == order.lvlusd_amount * (10 ** diff)
             );
         } else {
             uint8 diff = lvlusd_decimals - collateral_asset_decimals;
-            assert(
+            require(
                 order.collateral_amount * (10 ** diff) == order.lvlusd_amount
             );
+        }
+    }
+
+    // When doing redemptions, a user must use the collateral that they deposited when calling mint
+    function checkCollateralAmountIsBelowLimitForRedemption(
+        Order memory order
+    ) public view {
+        if (
+            order.collateral_amount >
+            netCollateralDeposited[order.benefactor][order.collateral_asset]
+        ) {
+            revert InsufficientCollateralDepositedForRedemption();
         }
     }
 
@@ -243,8 +266,21 @@ contract LevelMinting is
         Order calldata order,
         Route calldata route
     ) external virtual onlyMinterWhenEnabled {
+        if (msg.sender != order.benefactor) {
+            revert MsgSenderIsNotBenefactor();
+        }
         checkCollateralAndlvlUSDAmountEquality(order);
         _mint(order, route);
+    }
+
+    function mintDefault(
+        Order calldata order
+    ) external virtual onlyMinterWhenEnabled {
+        if (msg.sender != order.benefactor) {
+            revert MsgSenderIsNotBenefactor();
+        }
+        checkCollateralAndlvlUSDAmountEquality(order);
+        _mint(order, _route);
     }
 
     /**
@@ -254,16 +290,16 @@ contract LevelMinting is
     function _redeem(
         Order memory order
     ) internal nonReentrant belowMaxRedeemPerBlock(order.lvlusd_amount) {
-        if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
         _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the redeemed amount in this block
         redeemedPerBlock[block.number] += order.lvlusd_amount;
-        lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
+
         _transferToBeneficiary(
             order.beneficiary,
             order.collateral_asset,
             order.collateral_amount
         );
+
         emit Redeem(
             msg.sender,
             order.benefactor,
@@ -279,12 +315,28 @@ contract LevelMinting is
     ) external ensureCooldownOn onlyRedeemerWhenEnabled {
         if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
 
+        checkCollateralAndlvlUSDAmountEquality(order);
+        checkCollateralAmountIsBelowLimitForRedemption(order);
+
+        if (!_supportedAssets.contains(order.collateral_asset)) {
+            revert UnsupportedAsset();
+        }
+        if (msg.sender != order.benefactor) {
+            revert MsgSenderIsNotBenefactor();
+        }
         UserCooldown memory newCooldown = UserCooldown({
-            cooldownEnd: uint104(block.timestamp + cooldownDuration),
+            cooldownStart: uint104(block.timestamp),
             order: order
         });
 
         cooldowns[msg.sender][order.collateral_asset] = newCooldown;
+
+        // lock lvlUSD in this contract while user waits to redeem collateral
+        lvlusd.transferFrom(
+            order.benefactor,
+            address(this),
+            order.lvlusd_amount
+        );
 
         emit RedeemInitiated(
             msg.sender,
@@ -298,13 +350,15 @@ contract LevelMinting is
         address token // collateral
     ) external virtual ensureCooldownOn onlyRedeemerWhenEnabled {
         UserCooldown memory userCooldown = cooldowns[msg.sender][token];
-        checkCollateralAndlvlUSDAmountEquality(userCooldown.order);
-        if (
-            block.timestamp >= userCooldown.cooldownEnd || cooldownDuration == 0
-        ) {
-            userCooldown.cooldownEnd = 0;
+        if (block.timestamp >= userCooldown.cooldownStart + cooldownDuration) {
+            userCooldown.cooldownStart = type(uint104).max;
             cooldowns[msg.sender][token] = userCooldown;
             _redeem(userCooldown.order);
+            // burn user-provided lvlUSD that is locked in this contract
+            lvlusd.burn(userCooldown.order.lvlusd_amount);
+            netCollateralDeposited[userCooldown.order.benefactor][
+                userCooldown.order.collateral_asset
+            ] -= userCooldown.order.collateral_amount;
             emit RedeemCompleted(
                 msg.sender,
                 userCooldown.order.collateral_asset,
@@ -320,8 +374,16 @@ contract LevelMinting is
         Order memory order
     ) external virtual ensureCooldownOff onlyRedeemerWhenEnabled {
         if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
+        if (msg.sender != order.benefactor) {
+            revert MsgSenderIsNotBenefactor();
+        }
         checkCollateralAndlvlUSDAmountEquality(order);
+        checkCollateralAmountIsBelowLimitForRedemption(order);
         _redeem(order);
+        netCollateralDeposited[order.benefactor][
+            order.collateral_asset
+        ] -= order.collateral_amount;
+        lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
     }
 
     /// @notice Sets the max mintPerBlock limit
@@ -342,18 +404,6 @@ contract LevelMinting is
     function disableMintRedeem() external onlyRole(GATEKEEPER_ROLE) {
         _setMaxMintPerBlock(0);
         _setMaxRedeemPerBlock(0);
-    }
-
-    /// @notice Enables smart contracts to delegate an address for signing
-    function setDelegatedSigner(address _delegateTo) external {
-        delegatedSigner[_delegateTo][msg.sender] = true;
-        emit DelegatedSignerAdded(_delegateTo, msg.sender);
-    }
-
-    /// @notice Enables smart contracts to undelegate an address for signing
-    function removeDelegatedSigner(address _removedSigner) external {
-        delegatedSigner[_removedSigner][msg.sender] = false;
-        emit DelegatedSignerRemoved(_removedSigner, msg.sender);
     }
 
     /// @notice transfers an asset to a reserve wallet
@@ -389,6 +439,22 @@ contract LevelMinting is
         emit ReserveAddressRemoved(reserve);
     }
 
+    /// @notice Removes the minter role from an account, this can ONLY be executed by the gatekeeper role
+    /// @param minter The address to remove the minter role from
+    function removeMinterRole(
+        address minter
+    ) external onlyRole(GATEKEEPER_ROLE) {
+        _revokeRole(MINTER_ROLE, minter);
+    }
+
+    /// @notice Removes the redeemer role from an account, this can ONLY be executed by the gatekeeper role
+    /// @param redeemer The address to remove the redeemer role from
+    function removeRedeemerRole(
+        address redeemer
+    ) external onlyRole(GATEKEEPER_ROLE) {
+        _revokeRole(REDEEMER_ROLE, redeemer);
+    }
+
     /* --------------- PUBLIC --------------- */
 
     /// @notice Adds an asset to the supported assets list.
@@ -402,6 +468,7 @@ contract LevelMinting is
         ) {
             revert InvalidAssetAddress();
         }
+        _redeemableAssets.add(asset);
         emit AssetAdded(asset);
     }
 
@@ -419,57 +486,25 @@ contract LevelMinting is
         emit ReserveAddressAdded(reserve);
     }
 
-    /// @notice Get the domain separator for the token
-    /// @dev Return cached value if chainId matches cache, otherwise recomputes separator, to prevent replay attack across forks
-    /// @return The domain separator of the token at current chain
-    function getDomainSeparator() public view returns (bytes32) {
-        if (block.chainid == _chainId) {
-            return _domainSeparator;
-        }
-        return _computeDomainSeparator();
-    }
-
-    /// @notice hash an Order struct
-    function hashOrder(
-        Order calldata order
-    ) public view override returns (bytes32) {
-        return
-            ECDSA.toTypedDataHash(
-                getDomainSeparator(),
-                keccak256(encodeOrder(order))
-            );
-    }
-
-    function encodeOrder(
-        Order calldata order
-    ) public pure returns (bytes memory) {
-        return
-            abi.encode(
-                ORDER_TYPE,
-                order.order_type,
-                order.nonce,
-                order.benefactor,
-                order.beneficiary,
-                order.collateral_asset,
-                order.collateral_amount,
-                order.lvlusd_amount
-            );
+    function setCooldownDuration(
+        uint24 newDuration
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        cooldownDuration = newDuration;
     }
 
     /// @notice assert validity of signed order
     function verifyOrder(
         Order calldata order
-    ) public view override returns (bool, bytes32) {
-        bytes32 taker_order_hash = hashOrder(order);
+    ) public view override returns (bool) {
         if (order.beneficiary == address(0)) revert InvalidAmount();
         if (order.collateral_amount == 0) revert InvalidAmount();
         if (order.lvlusd_amount == 0) revert InvalidAmount();
-        return (true, taker_order_hash);
+        return true;
     }
 
     /// @notice assert validity of route object per type
     function verifyRoute(
-        Route calldata route,
+        Route memory route,
         OrderType orderType
     ) public view override returns (bool) {
         // routes only used to mint
@@ -528,6 +563,23 @@ contract LevelMinting is
         checkRedeemerRole = _check;
     }
 
+    function setRoute(
+        address[] memory _reserves,
+        uint256[] memory _ratios
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(
+            _reserves.length == _ratios.length,
+            "Reserves and ratios must have the same length"
+        );
+        for (uint256 i = 0; i < _reserves.length; i++) {
+            require(
+                _reserveAddresses.contains(_reserves[i]),
+                "Reserve address not found in _reserveAddresses"
+            );
+        }
+        _route = Route(_reserves, _ratios);
+    }
+
     /* --------------- PRIVATE --------------- */
 
     /// @notice deduplication of taker order
@@ -556,7 +608,7 @@ contract LevelMinting is
         address asset,
         uint256 amount
     ) internal {
-        if (!_supportedAssets.contains(asset)) revert UnsupportedAsset();
+        if (!_redeemableAssets.contains(asset)) revert UnsupportedAsset();
         IERC20(asset).safeTransfer(beneficiary, amount);
     }
 
@@ -565,8 +617,8 @@ contract LevelMinting is
         uint256 amount,
         address asset,
         address benefactor,
-        address[] calldata addresses,
-        uint256[] calldata ratios
+        address[] memory addresses,
+        uint256[] memory ratios
     ) internal {
         // cannot mint using unsupported asset or native ETH even if it is supported for redemptions
         if (!_supportedAssets.contains(asset)) revert UnsupportedAsset();
@@ -597,20 +649,5 @@ contract LevelMinting is
         uint256 oldMaxRedeemPerBlock = maxRedeemPerBlock;
         maxRedeemPerBlock = _maxRedeemPerBlock;
         emit MaxRedeemPerBlockChanged(oldMaxRedeemPerBlock, maxRedeemPerBlock);
-    }
-
-    /// @notice Compute the current domain separator
-    /// @return The domain separator for the token
-    function _computeDomainSeparator() internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    EIP712_DOMAIN,
-                    EIP_712_NAME,
-                    EIP712_REVISION,
-                    block.chainid,
-                    address(this)
-                )
-            );
     }
 }
