@@ -33,9 +33,6 @@ contract LevelMintingChild is LevelMinting {
     }
 
     function redeem(Order calldata order) external override {
-        // lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
-        // super.checkCollateralAndlvlUSDAmountEquality(order);
-        // super.checkCollateralAmountIsBelowLimitForRedemption(order);
         super._redeem(order);
         lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
     }
