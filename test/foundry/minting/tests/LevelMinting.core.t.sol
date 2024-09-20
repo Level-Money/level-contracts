@@ -5,10 +5,64 @@ pragma solidity >=0.8.19;
 
 import "../LevelMinting.utils.sol";
 import {console2} from "forge-std/console2.sol";
+import {AggregatorV3Interface} from "../../../../src/interfaces/AggregatorV3Interface.sol";
+
+// Add this mock oracle contract
+contract MockOracle is AggregatorV3Interface {
+    int256 private _price;
+    uint8 private _decimals;
+
+    constructor(int256 initialPrice, uint8 initialDecimals) {
+        _price = initialPrice;
+        _decimals = initialDecimals;
+    }
+
+    function decimals() external view returns (uint8) {
+        return _decimals;
+    }
+
+    function description() external pure returns (string memory) {
+        return "Mock Oracle";
+    }
+
+    function version() external pure returns (uint256) {
+        return 1;
+    }
+
+    function getRoundData(
+        uint80
+    ) external view returns (uint80, int256, uint256, uint256, uint80) {
+        return (0, _price, 0, 0, 0);
+    }
+
+    function latestRoundData()
+        external
+        view
+        returns (uint80, int256, uint256, uint256, uint80)
+    {
+        return (0, _price, 0, 0, 0);
+    }
+
+    // Function to update the price (for testing purposes)
+    function updatePrice(int256 newPrice) external {
+        _price = newPrice;
+    }
+}
 
 contract LevelMintingCoreTest is LevelMintingUtils {
+    MockOracle public mockOracle;
+
     function setUp() public override {
         super.setUp();
+        // Deploy mock oracle
+        mockOracle = new MockOracle(1e8, 8); // 1:1 price ratio with 8 decimals
+
+        // Add oracle for stETH
+        vm.prank(owner);
+        LevelMintingContract.addOracle(
+            address(stETHToken),
+            address(mockOracle)
+        );
     }
 
     function test__mint() public {
@@ -50,17 +104,17 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory mintOrder,
             ILevelMinting.Route memory route
-        ) = mint_setup(50 wei, 50 wei, 107, false);
+        ) = mint_setup(500 wei, 500 wei, 107, false);
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
             nonce: 102,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
-            lvlusd_amount: 50 wei,
+            lvlusd_amount: 5000 wei,
             collateral_amount: 50 wei
         });
-        stETHToken.mint(50 wei, beneficiary);
+        stETHToken.mint(50000 wei, beneficiary);
         LevelMintingContract.mint(order, route);
 
         vm.startPrank(beneficiary);
@@ -73,7 +127,48 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.stopPrank();
     }
 
-    function test_initiate_and_complete_redeem_revert() public {
+    function test_initiate_and_complete_redeem_min_collateral_not_met_revert()
+        public
+    {
+        vm.prank(owner);
+        LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            50 wei,
+            51 wei,
+            1,
+            false
+        );
+        vm.prank(owner);
+        LevelMintingContract.grantRole(redeemerRole, beneficiary);
+        vm.stopPrank();
+        (
+            ILevelMinting.Order memory mintOrder,
+            ILevelMinting.Route memory route
+        ) = mint_setup(500 wei, 500 wei, 107, false);
+        ILevelMinting.Order memory order = ILevelMinting.Order({
+            order_type: ILevelMinting.OrderType.MINT,
+            nonce: 102,
+            benefactor: beneficiary,
+            beneficiary: beneficiary,
+            collateral_asset: address(stETHToken),
+            lvlusd_amount: 5000 wei,
+            collateral_amount: 50 wei
+        });
+        stETHToken.mint(50000 wei, beneficiary);
+        LevelMintingContract.mint(order, route);
+
+        vm.startPrank(beneficiary);
+        LevelMintingContract.initiateRedeem(redeemOrder);
+        vm.warp(8 days);
+        uint bal = stETHToken.balanceOf(beneficiary);
+        vm.expectRevert(MinimumCollateralAmountNotMet);
+        LevelMintingContract.completeRedeem(redeemOrder.collateral_asset);
+        vm.stopPrank();
+    }
+
+    function test_initiate_and_complete_redeem_insufficient_cooldown_revert()
+        public
+    {
         vm.prank(owner);
         LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
         ILevelMinting.Order memory redeemOrder = redeem_setup(

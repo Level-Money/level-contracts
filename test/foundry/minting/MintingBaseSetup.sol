@@ -84,6 +84,10 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     // error encodings
     bytes internal InvalidCooldown =
         abi.encodeWithSelector(ILevelMinting.InvalidCooldown.selector);
+    bytes internal MinimumCollateralAmountNotMet =
+        abi.encodeWithSelector(
+            ILevelMinting.MinimumCollateralAmountNotMet.selector
+        );
     bytes internal Duplicate =
         abi.encodeWithSelector(ILevelMinting.Duplicate.selector);
     bytes internal InvalidAddress =
@@ -398,7 +402,10 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
 
         // taker
         vm.startPrank(beneficiary);
-        lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
+        lvlusdToken.approve(
+            address(LevelMintingContract),
+            10000000 * lvlusdAmount
+        );
         vm.stopPrank();
         vm.startPrank(owner);
         LevelMintingContract.grantRole(redeemerRole, redeemer);

@@ -63,6 +63,10 @@ interface ILevelMinting is ILevelMintingEvents {
     error MaxRedeemPerBlockExceeded();
     error MsgSenderIsNotBenefactor();
     error InsufficientCollateralDepositedForRedemption();
+    error OracleUndefined();
+    error OraclePriceIsZero();
+    error MinimumlvlUSDAmountNotMet();
+    error MinimumCollateralAmountNotMet();
 
     // function hashOrder(Order calldata order) external view returns (bytes32);
 
