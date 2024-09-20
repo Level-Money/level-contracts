@@ -32,7 +32,7 @@ contract MockOracle is AggregatorV3Interface {
     function getRoundData(
         uint80
     ) external view returns (uint80, int256, uint256, uint256, uint80) {
-        return (0, _price, 0, 0, 0);
+        return (0, _price, 0, 1e18, 0);
     }
 
     function latestRoundData()
@@ -40,7 +40,7 @@ contract MockOracle is AggregatorV3Interface {
         view
         returns (uint80, int256, uint256, uint256, uint80)
     {
-        return (0, _price, 0, 0, 0);
+        return (0, _price, 0, 1e18, 0);
     }
 
     // Function to update the price (for testing purposes)

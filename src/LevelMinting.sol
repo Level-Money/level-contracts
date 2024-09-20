@@ -104,8 +104,8 @@ contract LevelMinting is
     // collateral token address to chainlink oracle address map
     mapping(address => address) public oracles;
 
-    uint256 public HEART_BEAT_USDC = 86400;
-    uint256 public GRACE_PERIOD_TIME = 3600;
+    // oracle heart beat
+    uint256 public HEART_BEAT = 86400;
 
     /* --------------- MODIFIERS --------------- */
 
@@ -474,7 +474,10 @@ contract LevelMinting is
             revert OracleUndefined();
         }
         uint8 decimals = AggregatorV3Interface(oracle).decimals();
-        (, int answer, , , ) = AggregatorV3Interface(oracle).latestRoundData();
+        (, int answer, , uint256 updatedAt, ) = AggregatorV3Interface(oracle)
+            .latestRoundData();
+        require(answer > 0, "invalid price");
+        require(block.timestamp <= updatedAt + HEART_BEAT, "stale price");
         return (answer, decimals);
     }
 
