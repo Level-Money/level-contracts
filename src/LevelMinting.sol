@@ -160,7 +160,7 @@ contract LevelMinting is
         uint256[] memory _ratios,
         address _admin,
         uint256 _maxMintPerBlock,
-        uint256 _maxRedeemPerBlock //address _chainlink_USDT_USD
+        uint256 _maxRedeemPerBlock
     ) {
         if (address(_lvlusd) == address(0)) revert InvalidlvlUSDAddress();
         if (_assets.length == 0) revert NoAssetsProvided();
@@ -190,8 +190,6 @@ contract LevelMinting is
         cooldownDuration = MAX_COOLDOWN_DURATION;
 
         _route = Route(_reserves, _ratios);
-
-        // chainlink_USDT_USD = AggregatorV3Interface(_chainlink_USDT_USD);
 
         emit lvlUSDSet(address(_lvlusd));
     }
