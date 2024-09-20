@@ -12,8 +12,10 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IlvlUSD.sol";
 import "./interfaces/ILevelMinting.sol";
+import "forge-std/console.sol";
 
 /**
  * @title Level Minting Contract
@@ -99,9 +101,11 @@ contract LevelMinting is
     mapping(address => mapping(address => UserCooldown)) public cooldowns;
     Route _route;
 
-    // user address => token address => net deposited collateral quantity
-    mapping(address => mapping(address => uint256))
-        public netCollateralDeposited;
+    // collateral token address to chainlink oracle address map
+    mapping(address => address) public oracles;
+
+    uint256 public HEART_BEAT_USDC = 86400;
+    uint256 public GRACE_PERIOD_TIME = 3600;
 
     /* --------------- MODIFIERS --------------- */
 
@@ -156,7 +160,7 @@ contract LevelMinting is
         uint256[] memory _ratios,
         address _admin,
         uint256 _maxMintPerBlock,
-        uint256 _maxRedeemPerBlock
+        uint256 _maxRedeemPerBlock //address _chainlink_USDT_USD
     ) {
         if (address(_lvlusd) == address(0)) revert InvalidlvlUSDAddress();
         if (_assets.length == 0) revert NoAssetsProvided();
@@ -187,6 +191,8 @@ contract LevelMinting is
 
         _route = Route(_reserves, _ratios);
 
+        // chainlink_USDT_USD = AggregatorV3Interface(_chainlink_USDT_USD);
+
         emit lvlUSDSet(address(_lvlusd));
     }
 
@@ -198,7 +204,7 @@ contract LevelMinting is
      * @param route the addresses to which the collateral should be sent (and ratios describing the amount to send to each address)
      */
     function _mint(
-        Order calldata order,
+        Order memory order,
         Route memory route
     ) internal nonReentrant belowMaxMintPerBlock(order.lvlusd_amount) {
         require(!(lvlusd.denylisted(msg.sender)));
@@ -216,9 +222,6 @@ contract LevelMinting is
             route.ratios
         );
         lvlusd.mint(order.beneficiary, order.lvlusd_amount);
-        netCollateralDeposited[order.benefactor][
-            order.collateral_asset
-        ] += order.collateral_amount;
         emit Mint(
             msg.sender,
             order.benefactor,
@@ -229,57 +232,23 @@ contract LevelMinting is
         );
     }
 
-    function checkCollateralAndlvlUSDAmountEquality(
-        Order memory order
-    ) public view {
-        uint8 collateral_asset_decimals = ERC20(order.collateral_asset)
-            .decimals();
-        uint8 lvlusd_decimals = lvlusd.decimals();
-        if (collateral_asset_decimals == lvlusd_decimals) {
-            require(order.collateral_amount == order.lvlusd_amount);
-        } else if (collateral_asset_decimals > lvlusd_decimals) {
-            uint8 diff = collateral_asset_decimals - lvlusd_decimals;
-            require(
-                order.collateral_amount == order.lvlusd_amount * (10 ** diff)
-            );
-        } else {
-            uint8 diff = lvlusd_decimals - collateral_asset_decimals;
-            require(
-                order.collateral_amount * (10 ** diff) == order.lvlusd_amount
-            );
-        }
-    }
-
-    // When doing redemptions, a user must use the collateral that they deposited when calling mint
-    function checkCollateralAmountIsBelowLimitForRedemption(
-        Order memory order
-    ) public view {
-        if (
-            order.collateral_amount >
-            netCollateralDeposited[order.benefactor][order.collateral_asset]
-        ) {
-            revert InsufficientCollateralDepositedForRedemption();
-        }
-    }
-
     function mint(
-        Order calldata order,
+        Order memory order,
         Route calldata route
     ) external virtual onlyMinterWhenEnabled {
         if (msg.sender != order.benefactor) {
             revert MsgSenderIsNotBenefactor();
         }
-        checkCollateralAndlvlUSDAmountEquality(order);
-        _mint(order, route);
+        Order memory _order = computeCollateralOrlvlUSDAmount(order);
+        _mint(_order, route);
     }
 
     function mintDefault(
-        Order calldata order
+        Order memory order
     ) external virtual onlyMinterWhenEnabled {
         if (msg.sender != order.benefactor) {
             revert MsgSenderIsNotBenefactor();
         }
-        checkCollateralAndlvlUSDAmountEquality(order);
         _mint(order, _route);
     }
 
@@ -310,13 +279,59 @@ contract LevelMinting is
         );
     }
 
+    // given an order object, computes either the lvlUSD or collateral asset amount
+    // using price from chainlink oracle
+    function computeCollateralOrlvlUSDAmount(
+        Order memory order
+    ) private returns (Order memory) {
+        (int price, uint decimals) = getPriceAndDecimals(
+            order.collateral_asset
+        );
+        if (price == 0) {
+            revert OraclePriceIsZero();
+        }
+        Order memory newOrder = Order({
+            order_type: order.order_type,
+            collateral_asset: order.collateral_asset,
+            nonce: order.nonce,
+            benefactor: order.benefactor,
+            beneficiary: order.beneficiary,
+            collateral_amount: order.collateral_amount,
+            lvlusd_amount: order.lvlusd_amount
+        });
+
+        uint8 collateral_asset_decimals = ERC20(order.collateral_asset)
+            .decimals();
+        uint8 lvlusd_decimals = lvlusd.decimals();
+
+        if (order.order_type == OrderType.MINT) {
+            uint256 new_lvlusd_amount = (order.collateral_amount *
+                uint256(price) *
+                10 ** (lvlusd_decimals)) /
+                10 ** (decimals) /
+                10 ** (collateral_asset_decimals);
+            if (new_lvlusd_amount < order.lvlusd_amount) {
+                revert MinimumlvlUSDAmountNotMet();
+            }
+            newOrder.lvlusd_amount = new_lvlusd_amount;
+        } else {
+            uint new_collateral_amount = (order.lvlusd_amount *
+                (10 ** (decimals)) *
+                (10 ** (collateral_asset_decimals))) /
+                uint256(price) /
+                (10 ** (lvlusd_decimals));
+            if (new_collateral_amount < order.collateral_amount) {
+                revert MinimumCollateralAmountNotMet();
+            }
+            newOrder.collateral_amount = new_collateral_amount;
+        }
+        return newOrder;
+    }
+
     function initiateRedeem(
         Order memory order
     ) external ensureCooldownOn onlyRedeemerWhenEnabled {
         if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
-
-        checkCollateralAndlvlUSDAmountEquality(order);
-        checkCollateralAmountIsBelowLimitForRedemption(order);
 
         if (!_supportedAssets.contains(order.collateral_asset)) {
             revert UnsupportedAsset();
@@ -353,12 +368,12 @@ contract LevelMinting is
         if (block.timestamp >= userCooldown.cooldownStart + cooldownDuration) {
             userCooldown.cooldownStart = type(uint104).max;
             cooldowns[msg.sender][token] = userCooldown;
-            _redeem(userCooldown.order);
+            Order memory _order = computeCollateralOrlvlUSDAmount(
+                userCooldown.order
+            );
+            _redeem(_order);
             // burn user-provided lvlUSD that is locked in this contract
             lvlusd.burn(userCooldown.order.lvlusd_amount);
-            netCollateralDeposited[userCooldown.order.benefactor][
-                userCooldown.order.collateral_asset
-            ] -= userCooldown.order.collateral_amount;
             emit RedeemCompleted(
                 msg.sender,
                 userCooldown.order.collateral_asset,
@@ -377,12 +392,8 @@ contract LevelMinting is
         if (msg.sender != order.benefactor) {
             revert MsgSenderIsNotBenefactor();
         }
-        checkCollateralAndlvlUSDAmountEquality(order);
-        checkCollateralAmountIsBelowLimitForRedemption(order);
-        _redeem(order);
-        netCollateralDeposited[order.benefactor][
-            order.collateral_asset
-        ] -= order.collateral_amount;
+        Order memory _order = computeCollateralOrlvlUSDAmount(order);
+        _redeem(_order);
         lvlusd.burnFrom(order.benefactor, order.lvlusd_amount);
     }
 
@@ -457,6 +468,18 @@ contract LevelMinting is
 
     /* --------------- PUBLIC --------------- */
 
+    function getPriceAndDecimals(
+        address collateralToken
+    ) public returns (int256, uint) {
+        address oracle = oracles[collateralToken];
+        if (oracle == address(0)) {
+            revert OracleUndefined();
+        }
+        uint8 decimals = AggregatorV3Interface(oracle).decimals();
+        (, int answer, , , ) = AggregatorV3Interface(oracle).latestRoundData();
+        return (answer, decimals);
+    }
+
     /// @notice Adds an asset to the supported assets list.
     function addSupportedAsset(
         address asset
@@ -470,6 +493,13 @@ contract LevelMinting is
         }
         _redeemableAssets.add(asset);
         emit AssetAdded(asset);
+    }
+
+    function addOracle(
+        address collateral,
+        address oracle
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        oracles[collateral] = oracle;
     }
 
     /// @notice Adds a reserve to the supported reserves list.
@@ -494,7 +524,7 @@ contract LevelMinting is
 
     /// @notice assert validity of signed order
     function verifyOrder(
-        Order calldata order
+        Order memory order
     ) public view override returns (bool) {
         if (order.beneficiary == address(0)) revert InvalidAmount();
         if (order.collateral_amount == 0) revert InvalidAmount();
