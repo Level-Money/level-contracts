@@ -53,10 +53,12 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.grantRole(redeemerRole, beneficiary);
         vm.stopPrank();
 
-        (
-            ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Route memory route
-        ) = mint_setup(500 wei, 500 wei, 107, false);
+        (, ILevelMinting.Route memory route) = mint_setup(
+            500 wei,
+            500 wei,
+            107,
+            false
+        );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
             nonce: 102,
@@ -99,10 +101,12 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.grantRole(redeemerRole, beneficiary);
         vm.stopPrank();
 
-        (
-            ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Route memory route
-        ) = mint_setup(500 wei, 500 wei, 107, false);
+        (, ILevelMinting.Route memory route) = mint_setup(
+            500 wei,
+            500 wei,
+            107,
+            false
+        );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
             nonce: 102,
@@ -145,10 +149,12 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.grantRole(redeemerRole, beneficiary);
         vm.stopPrank();
 
-        (
-            ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Route memory route
-        ) = mint_setup(500 wei, 500 wei, 107, false);
+        (, ILevelMinting.Route memory route) = mint_setup(
+            500 wei,
+            500 wei,
+            107,
+            false
+        );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
             nonce: 102,
@@ -185,10 +191,12 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.prank(owner);
         LevelMintingContract.grantRole(redeemerRole, beneficiary);
         vm.stopPrank();
-        (
-            ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Route memory route
-        ) = mint_setup(500 wei, 500 wei, 107, false);
+        (, ILevelMinting.Route memory route) = mint_setup(
+            500 wei,
+            500 wei,
+            107,
+            false
+        );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
             nonce: 102,
@@ -221,10 +229,12 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             1,
             false
         );
-        (
-            ILevelMinting.Order memory mintOrder,
-            ILevelMinting.Route memory route
-        ) = mint_setup(50 wei, 50 wei, 107, false);
+        (, ILevelMinting.Route memory route) = mint_setup(
+            50 wei,
+            50 wei,
+            107,
+            false
+        );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
             nonce: 102,
