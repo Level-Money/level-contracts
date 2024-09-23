@@ -13,6 +13,7 @@ import {AggregatorV3Interface} from "../../../src/interfaces/AggregatorV3Interfa
 
 import "../../mocks/MockToken.sol";
 import "../../../src/lvlUSD.sol";
+import "../../../src/StakedlvlUSD.sol";
 import "../../../src/LevelReserveManager.sol";
 import "../../../src/interfaces/ILevelMinting.sol";
 import "../../../src/interfaces/ILevelMintingEvents.sol";
@@ -70,6 +71,7 @@ contract MockOracle is AggregatorV3Interface {
 contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     Utils internal utils;
     lvlUSD internal lvlusdToken;
+    StakedlvlUSD internal stakedlvlUSD;
     LevelReserveManager internal levelReserveManager;
     MockToken internal stETHToken;
     MockToken internal cbETHToken;
@@ -328,10 +330,16 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         stETHToken.mint(_stETHToDeposit, benefactor);
         // stETHToken.mint(_stETHToDeposit, beneficiary);
 
+        stakedlvlUSD = new StakedlvlUSD(
+            IlvlUSD(address(lvlusdToken)),
+            owner,
+            owner
+        );
 
         // set up level reserve manager
         levelReserveManager = new LevelReserveManager(
             IlvlUSD(address(lvlusdToken)),
+            stakedlvlUSD,
             address(owner),
             address(owner)
         );
@@ -452,10 +460,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
 
         // taker
         vm.startPrank(beneficiary);
-        lvlusdToken.approve(
-            address(LevelMintingContract),
-            10000000 * lvlusdAmount
-        );
+        lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
         vm.stopPrank();
         vm.startPrank(owner);
         LevelMintingContract.grantRole(redeemerRole, redeemer);
