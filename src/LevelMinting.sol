@@ -104,7 +104,7 @@ contract LevelMinting is
     // collateral token address to chainlink oracle address map
     mapping(address => address) public oracles;
 
-    // oracle heart beat
+    // oracle heart beat (used for staleness check)
     uint256 public HEART_BEAT = 86400;
 
     /* --------------- MODIFIERS --------------- */
@@ -156,6 +156,7 @@ contract LevelMinting is
     constructor(
         IlvlUSD _lvlusd,
         address[] memory _assets,
+        address[] memory _oracles, // oracle addresses
         address[] memory _reserves,
         uint256[] memory _ratios,
         address _admin,
@@ -165,12 +166,18 @@ contract LevelMinting is
         if (address(_lvlusd) == address(0)) revert InvalidlvlUSDAddress();
         if (_assets.length == 0) revert NoAssetsProvided();
         if (_admin == address(0)) revert InvalidZeroAddress();
+        if (_assets.length != _oracles.length) revert OraclesLengthNotEqualToAssetsLength();
+
         lvlusd = _lvlusd;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         for (uint256 i = 0; i < _assets.length; i++) {
             addSupportedAsset(_assets[i]);
+        }
+
+        for (uint256 i = 0; i < _assets.length; i++) {
+            addOracle(_assets[i], _oracles[i]);
         }
 
         for (uint256 j = 0; j < _reserves.length; j++) {
@@ -307,6 +314,8 @@ contract LevelMinting is
 
         if (order.order_type == OrderType.MINT) {
             uint256 new_lvlusd_amount;
+            // Note: it is assumed that only stablecoins are used as collateral, which
+            // is why we compare the price to $1
             if (uint256(price) < 10 ** decimals) {
                 new_lvlusd_amount =
                     (order.collateral_amount *
@@ -315,7 +324,7 @@ contract LevelMinting is
                     10 ** (decimals) /
                     10 ** (collateral_asset_decimals);
             } else {
-                // assume unit price
+                // assume unit price ($1)
                 new_lvlusd_amount =
                     (order.collateral_amount * (10 ** (lvlusd_decimals))) /
                     (10 ** (collateral_asset_decimals));

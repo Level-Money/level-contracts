@@ -566,6 +566,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
         LevelMinting levelMinting2 = new LevelMintingChild(
             IlvlUSD(address(lvlusdToken)),
             assets,
+            oracles,
             reserves,
             ratios,
             randomer,

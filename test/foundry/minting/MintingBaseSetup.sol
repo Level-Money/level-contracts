@@ -117,6 +117,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
 
     address[] assets;
     address[] reserves;
+    address[] oracles;
     uint256[] ratios;
 
     address internal NATIVE_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
@@ -282,6 +283,14 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         reserves = new address[](1);
         reserves[0] = reserve1;
 
+        oracles = new address[](6);
+        oracles[0] = address(0);
+        oracles[1] = address(0);
+        oracles[2] = address(0);
+        oracles[3] = address(0);
+        oracles[4] = address(0);
+        oracles[5] = address(0);
+
         ratios = new uint256[](1);
         ratios[0] = 10000;
 
@@ -305,6 +314,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         LevelMintingContract = new LevelMintingChild(
             IlvlUSD(address(lvlusdToken)),
             assets,
+            oracles,
             reserves,
             ratios,
             owner,

@@ -66,6 +66,7 @@ interface ILevelMinting is ILevelMintingEvents {
     error OraclePriceIsZero();
     error MinimumlvlUSDAmountNotMet();
     error MinimumCollateralAmountNotMet();
+    error OraclesLengthNotEqualToAssetsLength();
 
     // function hashOrder(Order calldata order) external view returns (bytes32);
 

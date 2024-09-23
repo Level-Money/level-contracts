@@ -58,6 +58,9 @@ contract DeployMainnet is Script, DeploymentUtils {
         // assets[4] = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
         // assets[5] = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
+        address[] memory oracles = new address[](1);
+        oracles[0] = address(0);
+
         address[] memory reserves = new address[](1);
         // reserve address
         reserves[0] = address(deployerAddress);
@@ -68,6 +71,7 @@ contract DeployMainnet is Script, DeploymentUtils {
         contracts.levelMintingContract = new LevelMinting(
             ilvlUSD,
             assets,
+            oracles,
             reserves,
             _ratios,
             deployerAddress,

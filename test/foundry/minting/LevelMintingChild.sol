@@ -8,6 +8,7 @@ contract LevelMintingChild is LevelMinting {
     constructor(
         IlvlUSD _lvlusd,
         address[] memory _assets,
+        address[] memory _oracles,
         address[] memory _reserves,
         uint256[] memory _ratios,
         address _admin,
@@ -17,6 +18,7 @@ contract LevelMintingChild is LevelMinting {
         LevelMinting(
             _lvlusd,
             _assets,
+            _oracles,
             _reserves,
             _ratios,
             _admin,
