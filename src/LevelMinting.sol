@@ -277,8 +277,11 @@ contract LevelMinting is
         );
     }
 
-    // given an order object, computes either the lvlUSD or collateral asset amount
+    // Given an order object, computes either the lvlUSD or collateral asset amount
     // using price from chainlink oracle
+    // Note: when minting, the price is taken to be min(oracle_price, 1)
+    // Note: when redeeming, the price is taken to be max(oracle_price, 1)
+    // These ensure that the protocol remains fully collateralized.
     function computeCollateralOrlvlUSDAmount(
         Order memory order
     ) private returns (Order memory) {
@@ -303,21 +306,43 @@ contract LevelMinting is
         uint8 lvlusd_decimals = lvlusd.decimals();
 
         if (order.order_type == OrderType.MINT) {
-            uint256 new_lvlusd_amount = (order.collateral_amount *
-                uint256(price) *
-                10 ** (lvlusd_decimals)) /
-                10 ** (decimals) /
-                10 ** (collateral_asset_decimals);
+            uint256 new_lvlusd_amount;
+            if (uint256(price) < 10 ** decimals) {
+                new_lvlusd_amount =
+                    (order.collateral_amount *
+                        uint256(price) *
+                        10 ** (lvlusd_decimals)) /
+                    10 ** (decimals) /
+                    10 ** (collateral_asset_decimals);
+            } else {
+                // assume unit price
+                new_lvlusd_amount =
+                    (order.collateral_amount * (10 ** (lvlusd_decimals))) /
+                    (10 ** (collateral_asset_decimals));
+            }
+            // ensure that calculated lvlusd amount exceeds the user-specified minimum
             if (new_lvlusd_amount < order.lvlusd_amount) {
                 revert MinimumlvlUSDAmountNotMet();
             }
             newOrder.lvlusd_amount = new_lvlusd_amount;
         } else {
-            uint new_collateral_amount = (order.lvlusd_amount *
-                (10 ** (decimals)) *
-                (10 ** (collateral_asset_decimals))) /
-                uint256(price) /
-                (10 ** (lvlusd_decimals));
+            // redeem
+            uint256 new_collateral_amount;
+            if (uint256(price) > 10 ** decimals) {
+                new_collateral_amount =
+                    (order.lvlusd_amount *
+                        (10 ** (decimals)) *
+                        (10 ** (collateral_asset_decimals))) /
+                    uint256(price) /
+                    (10 ** (lvlusd_decimals));
+            } else {
+                // assume unit price
+                new_collateral_amount =
+                    (order.lvlusd_amount *
+                        (10 ** (collateral_asset_decimals))) /
+                    (10 ** (lvlusd_decimals));
+            }
+            // ensure that calculated collateral amount exceeds the user-specified minimum
             if (new_collateral_amount < order.collateral_amount) {
                 revert MinimumCollateralAmountNotMet();
             }

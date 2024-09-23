@@ -9,6 +9,7 @@ import {stdStorage, StdStorage, Test} from "forge-std/Test.sol";
 import {SigUtils} from "../../utils/SigUtils.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {Utils} from "../../utils/Utils.sol";
+import {AggregatorV3Interface} from "../../../src/interfaces/AggregatorV3Interface.sol";
 
 import "../../mocks/MockToken.sol";
 import "../../../src/lvlUSD.sol";
@@ -20,6 +21,52 @@ import "./LevelMintingChild.sol";
 import "../../../src/interfaces/ISingleAdminAccessControl.sol";
 import "../../../src/interfaces/IlvlUSDDefinitions.sol";
 
+// Add this mock oracle contract
+contract MockOracle is AggregatorV3Interface {
+    int256 private _price;
+    uint8 private _decimals;
+
+    constructor(int256 initialPrice, uint8 initialDecimals) {
+        _price = initialPrice;
+        _decimals = initialDecimals;
+    }
+
+    function decimals() external view returns (uint8) {
+        return _decimals;
+    }
+
+    function description() external pure returns (string memory) {
+        return "Mock Oracle";
+    }
+
+    function version() external pure returns (uint256) {
+        return 1;
+    }
+
+    function getRoundData(
+        uint80
+    ) external view returns (uint80, int256, uint256, uint256, uint80) {
+        return (0, _price, 0, 1e18, 0);
+    }
+
+    function latestRoundData()
+        external
+        view
+        returns (uint80, int256, uint256, uint256, uint80)
+    {
+        return (0, _price, 0, 1e18, 0);
+    }
+
+    // Function to update the price (for testing purposes)
+    function updatePriceAndDecimals(
+        int256 newPrice,
+        uint8 newDecimals
+    ) external {
+        _price = newPrice;
+        _decimals = newDecimals;
+    }
+}
+
 contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     Utils internal utils;
     lvlUSD internal lvlusdToken;
@@ -30,6 +77,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     MockToken internal USDCToken;
     MockToken internal USDTToken;
     MockToken internal token;
+    MockOracle public mockOracle;
     LevelMintingChild internal LevelMintingContract;
     SigUtils internal sigUtils;
     SigUtils internal sigUtilslvlUSD;
@@ -186,6 +234,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
             18,
             msg.sender
         );
+        mockOracle = new MockOracle(1e8, 8); // 1:1 price ratio with 8 decimals
 
         sigUtils = new SigUtils(stETHToken.DOMAIN_SEPARATOR());
         sigUtilslvlUSD = new SigUtils(lvlusdToken.DOMAIN_SEPARATOR());
@@ -278,6 +327,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         // Mint stEth to the benefactor in order to test
         stETHToken.mint(_stETHToDeposit, benefactor);
         // stETHToken.mint(_stETHToDeposit, beneficiary);
+
 
         // set up level reserve manager
         levelReserveManager = new LevelReserveManager(
