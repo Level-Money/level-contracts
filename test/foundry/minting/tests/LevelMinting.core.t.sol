@@ -81,6 +81,87 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.stopPrank();
     }
 
+    function test_fuzz_initiate_and_complete_redeem(
+        uint256 mintAmount,
+        uint256 collateralAmount,
+        uint64 nonce,
+        uint64 mintNonce,
+        uint16 daysToWait
+    ) public {
+        collateralAmount = bound(collateralAmount, 1, 1e10);
+        mintAmount = bound(mintAmount, collateralAmount, 1e15);
+        uint256 lvlusdAmount = collateralAmount;
+        daysToWait = uint16(bound(daysToWait, 8, 30));  // Between 1 and 30 days
+        nonce = uint64(bound(nonce, 1, 1000));
+        mintNonce = uint64(bound(mintNonce, 1, 1000));
+
+        vm.startPrank(benefactor);
+        stETHToken.approve(address(LevelMintingContract), collateralAmount);
+        vm.stopPrank();
+
+        vm.startPrank(benefactor);
+        lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
+        vm.stopPrank();
+
+        vm.startPrank(beneficiary);
+        stETHToken.approve(address(LevelMintingContract), collateralAmount);
+        vm.stopPrank();
+
+        vm.startPrank(beneficiary);
+        lvlusdToken.approve(address(LevelMintingContract), lvlusdAmount);
+        vm.stopPrank();
+
+        vm.startPrank(redeemer);
+        stETHToken.approve(address(LevelMintingContract), collateralAmount);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
+
+        ILevelMinting.Order memory redeemOrder = redeem_setup(
+            lvlusdAmount,
+            collateralAmount,
+            nonce,
+            false
+        );
+
+        vm.prank(owner);
+        LevelMintingContract.grantRole(redeemerRole, beneficiary);
+        vm.stopPrank();
+
+        (, ILevelMinting.Route memory route) = mint_setup(
+            lvlusdAmount,
+            collateralAmount,
+            nonce + 1,
+            false
+        );
+
+        ILevelMinting.Order memory order = ILevelMinting.Order({
+            order_type: ILevelMinting.OrderType.MINT,
+            nonce: nonce + 2,
+            benefactor: beneficiary,
+            beneficiary: beneficiary,
+            collateral_asset: address(stETHToken),
+            lvlusd_amount: lvlusdAmount,
+            collateral_amount: collateralAmount
+        });
+
+        stETHToken.mint(mintAmount * 1000, beneficiary);  // Mint enough for the test
+        LevelMintingContract.mint(order, route);
+
+        vm.startPrank(beneficiary);
+        LevelMintingContract.initiateRedeem(redeemOrder);
+
+        vm.warp(daysToWait * 1 days);
+
+        uint256 balBefore = stETHToken.balanceOf(beneficiary);
+        LevelMintingContract.completeRedeem(redeemOrder.collateral_asset);
+        uint256 balAfter = stETHToken.balanceOf(beneficiary);
+
+        assertEq(balAfter - balBefore, collateralAmount, "Incorrect redeem amount");
+        vm.stopPrank();
+    }
+
     function test_initiate_and_complete_redeem_stablecoin_depeg_price_above_unit()
         public
     {
