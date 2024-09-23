@@ -62,7 +62,6 @@ interface ILevelMinting is ILevelMintingEvents {
     error MaxMintPerBlockExceeded();
     error MaxRedeemPerBlockExceeded();
     error MsgSenderIsNotBenefactor();
-    error InsufficientCollateralDepositedForRedemption();
     error OracleUndefined();
     error OraclePriceIsZero();
     error MinimumlvlUSDAmountNotMet();
