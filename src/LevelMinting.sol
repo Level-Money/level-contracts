@@ -153,6 +153,8 @@ contract LevelMinting is
 
     /* --------------- CONSTRUCTOR --------------- */
 
+    // Note: It is required that _assets.length == _oracles.length
+    // Note: It is required that _reserves.length == _ratios.length
     constructor(
         IlvlUSD _lvlusd,
         address[] memory _assets,
@@ -166,7 +168,8 @@ contract LevelMinting is
         if (address(_lvlusd) == address(0)) revert InvalidlvlUSDAddress();
         if (_assets.length == 0) revert NoAssetsProvided();
         if (_admin == address(0)) revert InvalidZeroAddress();
-        if (_assets.length != _oracles.length) revert OraclesLengthNotEqualToAssetsLength();
+        if (_assets.length != _oracles.length)
+            revert OraclesLengthNotEqualToAssetsLength();
 
         lvlusd = _lvlusd;
 
