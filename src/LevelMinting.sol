@@ -76,9 +76,6 @@ contract LevelMinting is
     /// @notice holds computable chain id
     uint256 private immutable _chainId;
 
-    /// @notice user deduplication
-    mapping(address => mapping(uint256 => uint256)) private _orderBitmaps;
-
     /// @notice lvlUSD minted per block
     mapping(uint256 => uint256) public mintedPerBlock;
     /// @notice lvlUSD redeemed per block
@@ -219,7 +216,7 @@ contract LevelMinting is
         if (order.order_type != OrderType.MINT) revert InvalidOrder();
         verifyOrder(order);
         if (!verifyRoute(route, order.order_type)) revert InvalidRoute();
-        _deduplicateOrder(order.benefactor, order.nonce);
+        // _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the minted amount in this block
         mintedPerBlock[block.number] += order.lvlusd_amount;
         _transferCollateral(
@@ -267,7 +264,7 @@ contract LevelMinting is
     function _redeem(
         Order memory order
     ) internal nonReentrant belowMaxRedeemPerBlock(order.lvlusd_amount) {
-        _deduplicateOrder(order.benefactor, order.nonce);
+        // _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the redeemed amount in this block
         redeemedPerBlock[block.number] += order.lvlusd_amount;
 
@@ -602,23 +599,6 @@ contract LevelMinting is
         return true;
     }
 
-    /// @notice verify validity of nonce by checking its presence
-    function verifyNonce(
-        address sender,
-        uint256 nonce
-    ) public view override returns (bool, uint256, uint256, uint256) {
-        if (nonce == 0) revert InvalidNonce();
-        uint256 invalidatorSlot = nonce >> 8;
-        uint256 invalidatorBit = 1 << uint8(nonce);
-        mapping(uint256 => uint256) storage invalidatorStorage = _orderBitmaps[
-            sender
-        ];
-        uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        if (invalidator & invalidatorBit != 0) revert InvalidNonce();
-
-        return (true, invalidatorSlot, invalidator, invalidatorBit);
-    }
-
     function setCheckMinterRole(
         bool _check
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -646,26 +626,6 @@ contract LevelMinting is
             );
         }
         _route = Route(_reserves, _ratios);
-    }
-
-    /* --------------- PRIVATE --------------- */
-
-    /// @notice deduplication of taker order
-    function _deduplicateOrder(
-        address sender,
-        uint256 nonce
-    ) private returns (bool) {
-        (
-            bool valid,
-            uint256 invalidatorSlot,
-            uint256 invalidator,
-            uint256 invalidatorBit
-        ) = verifyNonce(sender, nonce);
-        mapping(uint256 => uint256) storage invalidatorStorage = _orderBitmaps[
-            sender
-        ];
-        invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBit;
-        return valid;
     }
 
     /* --------------- INTERNAL --------------- */

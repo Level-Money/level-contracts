@@ -339,25 +339,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         vm.stopPrank();
     }
 
-    function test_redeem_invalidNonce_revert() public {
-        // Unset the max redeem per block limit
-        vm.prank(owner);
-        LevelMintingContract.setMaxRedeemPerBlock(type(uint256).max);
-
-        ILevelMinting.Order memory redeemOrder = redeem_setup(
-            _lvlusdToMint,
-            _stETHToDeposit,
-            1,
-            false
-        );
-
-        vm.startPrank(redeemer);
-        LevelMintingContract.redeem(redeemOrder);
-
-        vm.expectRevert(InvalidNonce);
-        LevelMintingContract.redeem(redeemOrder);
-    }
-
     function test_nativeEth_withdraw() public {
         vm.deal(address(LevelMintingContract), _stETHToDeposit);
 

@@ -77,11 +77,6 @@ interface ILevelMinting is ILevelMintingEvents {
         OrderType order_type
     ) external view returns (bool);
 
-    function verifyNonce(
-        address sender,
-        uint256 nonce
-    ) external view returns (bool, uint256, uint256, uint256);
-
     function mint(Order calldata order, Route calldata route) external;
 
     function initiateRedeem(Order memory order) external;
