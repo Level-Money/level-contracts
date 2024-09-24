@@ -8,7 +8,6 @@ pragma solidity >=0.8.19;
 import "./SingleAdminAccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -32,18 +31,6 @@ contract LevelMinting is
 
     /* --------------- CONSTANTS --------------- */
 
-    /// @notice EIP712 domain
-    bytes32 private constant EIP712_DOMAIN =
-        keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
-
-    /// @notice order type
-    bytes32 private constant ORDER_TYPE =
-        keccak256(
-            "Order(uint8 order_type,uint256 nonce,address benefactor,address beneficiary,address collateral_asset,uint256 collateral_amount,uint256 lvlusd_amount)"
-        );
-
     /// @notice role enabling to disable mint and redeem
     bytes32 private constant GATEKEEPER_ROLE = keccak256("GATEKEEPER_ROLE");
 
@@ -52,12 +39,6 @@ contract LevelMinting is
 
     /// @notice role for redeeming lvlUSD
     bytes32 private constant REDEEMER_ROLE = keccak256("REDEEMER_ROLE");
-
-    /// @notice EIP712 name
-    bytes32 private constant EIP_712_NAME = keccak256("LevelMinting");
-
-    /// @notice holds EIP712 revision
-    bytes32 private constant EIP712_REVISION = keccak256("1");
 
     /* --------------- STATE VARIABLES --------------- */
 
@@ -73,16 +54,10 @@ contract LevelMinting is
     // @notice reserve addresses
     EnumerableSet.AddressSet internal _reserveAddresses;
 
-    /// @notice holds computable chain id
-    uint256 private immutable _chainId;
-
     /// @notice lvlUSD minted per block
     mapping(uint256 => uint256) public mintedPerBlock;
     /// @notice lvlUSD redeemed per block
     mapping(uint256 => uint256) public redeemedPerBlock;
-
-    /// @notice For smart contracts to delegate signing to EOA address
-    mapping(address => mapping(address => bool)) public delegatedSigner;
 
     /// @notice max minted lvlUSD allowed per block
     uint256 public maxMintPerBlock;
@@ -192,8 +167,6 @@ contract LevelMinting is
             _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         }
 
-        _chainId = block.chainid;
-
         cooldownDuration = MAX_COOLDOWN_DURATION;
 
         _route = Route(_reserves, _ratios);
@@ -216,7 +189,6 @@ contract LevelMinting is
         if (order.order_type != OrderType.MINT) revert InvalidOrder();
         verifyOrder(order);
         if (!verifyRoute(route, order.order_type)) revert InvalidRoute();
-        // _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the minted amount in this block
         mintedPerBlock[block.number] += order.lvlusd_amount;
         _transferCollateral(
@@ -264,7 +236,6 @@ contract LevelMinting is
     function _redeem(
         Order memory order
     ) internal nonReentrant belowMaxRedeemPerBlock(order.lvlusd_amount) {
-        // _deduplicateOrder(order.benefactor, order.nonce);
         // Add to the redeemed amount in this block
         redeemedPerBlock[block.number] += order.lvlusd_amount;
 
