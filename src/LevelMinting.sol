@@ -229,6 +229,12 @@ contract LevelMinting is
         _mint(order, _route);
     }
 
+    function setCooldownDuration(
+        uint24 newDuration
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        cooldownDuration = newDuration;
+    }
+
     /**
      * @notice Redeem stablecoins for assets
      * @param order struct containing order details and confirmation from server
@@ -522,13 +528,7 @@ contract LevelMinting is
         emit ReserveAddressAdded(reserve);
     }
 
-    function setCooldownDuration(
-        uint24 newDuration
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        cooldownDuration = newDuration;
-    }
-
-    /// @notice assert validity of signed order
+    /// @notice assert validity of order
     function verifyOrder(
         Order memory order
     ) public view override returns (bool) {
