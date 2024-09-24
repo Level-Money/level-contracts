@@ -75,9 +75,12 @@ contract LevelMinting is
 
     // collateral token address to chainlink oracle address map
     mapping(address => address) public oracles;
+    mapping(address => uint256) public heartbeats;
 
     // oracle heart beat (used for staleness check)
-    uint256 public HEART_BEAT = 86400;
+    // this is the chainlink heartbeat for USDC and USDT
+    // other tokens may have different heartbeats, which can be set using setHeartBeat
+    uint256 public DEFAULT_HEART_BEAT = 86400;
 
     /* --------------- MODIFIERS --------------- */
 
@@ -488,7 +491,11 @@ contract LevelMinting is
         (, int answer, , uint256 updatedAt, ) = AggregatorV3Interface(oracle)
             .latestRoundData();
         require(answer > 0, "invalid price");
-        require(block.timestamp <= updatedAt + HEART_BEAT, "stale price");
+        uint256 heartBeat = heartbeats[collateralToken];
+        if (heartBeat == 0) {
+            heartBeat = DEFAULT_HEART_BEAT;
+        }
+        require(block.timestamp <= updatedAt + heartBeat, "stale price");
         return (answer, decimals);
     }
 
@@ -512,6 +519,13 @@ contract LevelMinting is
         address oracle
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         oracles[collateral] = oracle;
+    }
+
+    function setHeartBeat(
+        address collateral,
+        uint256 heartBeat
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        heartbeats[collateral] = heartBeat;
     }
 
     /// @notice Adds a reserve to the supported reserves list.
