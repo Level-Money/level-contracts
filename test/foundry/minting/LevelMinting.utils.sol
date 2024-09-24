@@ -16,7 +16,7 @@ contract LevelMintingUtils is MintingBaseSetup {
         (
             ILevelMinting.Order memory order,
             ILevelMinting.Route memory route
-        ) = mint_setup(excessiveMintAmount, _stETHToDeposit, 1, false);
+        ) = mint_setup(excessiveMintAmount, _stETHToDeposit, false);
 
         vm.prank(minter);
         vm.expectRevert(MaxMintPerBlockExceeded);
@@ -49,7 +49,6 @@ contract LevelMintingUtils is MintingBaseSetup {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             excessiveRedeemAmount,
             _stETHToDeposit,
-            1,
             false
         );
 
@@ -80,7 +79,7 @@ contract LevelMintingUtils is MintingBaseSetup {
         (
             ILevelMinting.Order memory order,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, false);
 
         vm.prank(minter);
         LevelMintingContract.mint(order, route);
@@ -90,7 +89,6 @@ contract LevelMintingUtils is MintingBaseSetup {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             _lvlusdToMint,
             _stETHToDeposit,
-            1,
             false
         );
         vm.prank(redeemer);

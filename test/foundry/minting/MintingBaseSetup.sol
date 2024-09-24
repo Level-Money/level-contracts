@@ -187,7 +187,7 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
         keccak256("Route(address[] addresses,uint256[] ratios)");
     bytes32 internal constant ORDER_TYPE =
         keccak256(
-            "Order(uint256 nonce,address benefactor,address beneficiary,address asset,uint256 base_amount,uint256 quote_amount)"
+            "Order(address benefactor,address beneficiary,address asset,uint256 base_amount,uint256 quote_amount)"
         );
 
     uint256 internal _slippageRange = 50000000000000000;
@@ -386,7 +386,6 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     function mint_setup(
         uint256 lvlusdAmount,
         uint256 collateralAmount,
-        uint256 nonce,
         bool multipleMints
     )
         public
@@ -397,7 +396,6 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     {
         order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: nonce,
             benefactor: benefactor,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -438,20 +436,18 @@ contract MintingBaseSetup is Test, ILevelMintingEvents, IlvlUSDDefinitions {
     function redeem_setup(
         uint256 lvlusdAmount,
         uint256 collateralAmount,
-        uint256 nonce,
         bool multipleRedeem
     ) public returns (ILevelMinting.Order memory redeemOrder) {
         (
             ILevelMinting.Order memory mintOrder,
             ILevelMinting.Route memory route
-        ) = mint_setup(lvlusdAmount, collateralAmount, nonce, false);
+        ) = mint_setup(lvlusdAmount, collateralAmount, false);
         vm.prank(minter);
         LevelMintingContract.mint(mintOrder, route);
 
         //redeem
         redeemOrder = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.REDEEM,
-            nonce: nonce + 1,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),

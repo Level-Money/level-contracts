@@ -121,7 +121,7 @@ contract LevelMintingACLTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory order,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, false);
 
         vm.prank(minter);
         vm.expectRevert(MaxMintPerBlockExceeded);

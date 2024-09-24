@@ -19,7 +19,7 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory aOrder,
             ILevelMinting.Route memory aRoute
-        ) = mint_setup(firstMintAmount, _stETHToDeposit, 1, false);
+        ) = mint_setup(firstMintAmount, _stETHToDeposit, false);
 
         vm.prank(minter);
         LevelMintingContract.mint(aOrder, aRoute);
@@ -30,7 +30,7 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory bOrder,
             ILevelMinting.Route memory bRoute
-        ) = mint_setup(secondMintAmount, _stETHToDeposit, 2, true);
+        ) = mint_setup(secondMintAmount, _stETHToDeposit, true);
         vm.prank(minter);
         LevelMintingContract.mint(bOrder, bRoute);
 
@@ -61,7 +61,7 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory mintOrder,
             ILevelMinting.Route memory route
-        ) = mint_setup(excessiveMintAmount, _stETHToDeposit, 1, false);
+        ) = mint_setup(excessiveMintAmount, _stETHToDeposit, false);
 
         // maker
         vm.startPrank(minter);
@@ -92,7 +92,7 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory order,
             ILevelMinting.Route memory route
-        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_lvlusdToMint, _stETHToDeposit, false);
 
         vm.prank(minter);
         LevelMintingContract.mint(order, route);
@@ -140,7 +140,6 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             firstRedeemAmount,
             _stETHToDeposit,
-            1,
             false
         );
 
@@ -153,7 +152,6 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         ILevelMinting.Order memory bRedeemOrder = redeem_setup(
             secondRedeemAmount,
             _stETHToDeposit,
-            2,
             true
         );
 
@@ -187,7 +185,6 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             excessiveRedeemAmount,
             _stETHToDeposit,
-            1,
             false
         );
 
@@ -222,7 +219,6 @@ contract LevelMintingBlockLimitsTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             redeemAmount,
             _stETHToDeposit,
-            1,
             false
         );
 

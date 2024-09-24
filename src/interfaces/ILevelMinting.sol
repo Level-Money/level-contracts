@@ -30,7 +30,6 @@ interface ILevelMinting is ILevelMintingEvents {
 
     struct Order {
         OrderType order_type;
-        uint256 nonce;
         address benefactor;
         address beneficiary;
         address collateral_asset;

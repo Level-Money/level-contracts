@@ -281,7 +281,6 @@ contract LevelMinting is
         Order memory newOrder = Order({
             order_type: order.order_type,
             collateral_asset: order.collateral_asset,
-            nonce: order.nonce,
             benefactor: order.benefactor,
             beneficiary: order.beneficiary,
             collateral_amount: order.collateral_amount,

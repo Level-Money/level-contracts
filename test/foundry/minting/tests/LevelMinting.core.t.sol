@@ -46,7 +46,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             50 wei,
             50 wei,
-            1,
             false
         );
         vm.prank(owner);
@@ -56,12 +55,10 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (, ILevelMinting.Route memory route) = mint_setup(
             500 wei,
             500 wei,
-            107,
             false
         );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 102,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -84,15 +81,13 @@ contract LevelMintingCoreTest is LevelMintingUtils {
     function test_fuzz_initiate_and_complete_redeem(
         uint256 mintAmount,
         uint256 collateralAmount,
-        uint64 nonce,
         uint64 mintNonce,
         uint16 daysToWait
     ) public {
         collateralAmount = bound(collateralAmount, 1, 1e10);
         mintAmount = bound(mintAmount, collateralAmount, 1e15);
         uint256 lvlusdAmount = collateralAmount;
-        daysToWait = uint16(bound(daysToWait, 8, 30));  // Between 1 and 30 days
-        nonce = uint64(bound(nonce, 1, 1000));
+        daysToWait = uint16(bound(daysToWait, 8, 30)); // Between 1 and 30 days
         mintNonce = uint64(bound(mintNonce, 1, 1000));
 
         vm.startPrank(benefactor);
@@ -121,7 +116,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             lvlusdAmount,
             collateralAmount,
-            nonce,
             false
         );
 
@@ -132,13 +126,11 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (, ILevelMinting.Route memory route) = mint_setup(
             lvlusdAmount,
             collateralAmount,
-            nonce + 1,
             false
         );
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: nonce + 2,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -146,7 +138,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
             collateral_amount: collateralAmount
         });
 
-        stETHToken.mint(mintAmount * 1000, beneficiary);  // Mint enough for the test
+        stETHToken.mint(mintAmount * 1000, beneficiary); // Mint enough for the test
         LevelMintingContract.mint(order, route);
 
         vm.startPrank(beneficiary);
@@ -158,7 +150,11 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         LevelMintingContract.completeRedeem(redeemOrder.collateral_asset);
         uint256 balAfter = stETHToken.balanceOf(beneficiary);
 
-        assertEq(balAfter - balBefore, collateralAmount, "Incorrect redeem amount");
+        assertEq(
+            balAfter - balBefore,
+            collateralAmount,
+            "Incorrect redeem amount"
+        );
         vm.stopPrank();
     }
 
@@ -175,7 +171,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             50 wei,
             40 wei,
-            1,
             false
         );
         vm.prank(owner);
@@ -185,12 +180,10 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (, ILevelMinting.Route memory route) = mint_setup(
             500 wei,
             500 wei,
-            107,
             false
         );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 102,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -223,7 +216,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             50 wei,
             50 wei,
-            1,
             false
         );
         vm.prank(owner);
@@ -233,12 +225,10 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (, ILevelMinting.Route memory route) = mint_setup(
             500 wei,
             500 wei,
-            107,
             false
         );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 102,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -266,7 +256,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             50 wei,
             51 wei,
-            1,
             false
         );
         vm.prank(owner);
@@ -275,12 +264,10 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (, ILevelMinting.Route memory route) = mint_setup(
             500 wei,
             500 wei,
-            107,
             false
         );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 102,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -307,18 +294,15 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         ILevelMinting.Order memory redeemOrder = redeem_setup(
             50 wei,
             50 wei,
-            1,
             false
         );
         (, ILevelMinting.Route memory route) = mint_setup(
             50 wei,
             50 wei,
-            107,
             false
         );
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 102,
             benefactor: beneficiary,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -344,7 +328,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 8,
             benefactor: benefactor,
             beneficiary: benefactor,
             collateral_asset: address(stETHToken),
@@ -381,7 +364,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         //redeem
         ILevelMinting.Order memory redeemOrder = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.REDEEM,
-            nonce: 800,
             benefactor: benefactor,
             beneficiary: benefactor,
             collateral_asset: address(stETHToken),
@@ -409,7 +391,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory order,
             ILevelMinting.Route memory route
-        ) = mint_setup(expectedAmount, _stETHToDeposit, 1, false);
+        ) = mint_setup(expectedAmount, _stETHToDeposit, false);
 
         vm.recordLogs();
         vm.prank(minter);
@@ -427,7 +409,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         uint256 _smallUsdeToMint = 1.75 * 10 ** 23;
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 14,
             benefactor: benefactor,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -501,7 +482,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory mintOrder = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 15,
             benefactor: benefactor,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -547,7 +527,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 16,
             benefactor: benefactor,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -592,7 +571,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 18,
             benefactor: benefactor,
             beneficiary: beneficiary,
             collateral_asset: address(stETHToken),
@@ -631,7 +609,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
 
         ILevelMinting.Order memory order = ILevelMinting.Order({
             order_type: ILevelMinting.OrderType.MINT,
-            nonce: 19,
             benefactor: benefactor,
             beneficiary: beneficiary,
             collateral_asset: address(token),
@@ -714,7 +691,6 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         ILevelMinting.Order memory order = redeem_setup(
             1 ether,
             50 ether,
-            20,
             false
         );
 
@@ -739,7 +715,7 @@ contract LevelMintingCoreTest is LevelMintingUtils {
         (
             ILevelMinting.Order memory order,
             ILevelMinting.Route memory route
-        ) = mint_setup(_smallUsdeToMint, _stETHToDeposit, 1, false);
+        ) = mint_setup(_smallUsdeToMint, _stETHToDeposit, false);
 
         address[] memory targets = new address[](3);
         targets[0] = address(LevelMintingContract);
