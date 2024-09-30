@@ -71,6 +71,9 @@ contract LevelMinting is
     uint24 public cooldownDuration;
 
     mapping(address => mapping(address => UserCooldown)) public cooldowns;
+    // mapping from collateral asset address to total amount of lvlUSD locked for redemptions
+    mapping(address => uint256) public pendingRedemptionlvlUSDAmounts;
+
     Route _route;
 
     // collateral token address to chainlink oracle address map
@@ -235,6 +238,7 @@ contract LevelMinting is
     function setCooldownDuration(
         uint24 newDuration
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newDuration <= MAX_COOLDOWN_DURATION, "newDuration exceeds MAX_COOLDOWN_DURATION");
         cooldownDuration = newDuration;
     }
 
@@ -357,6 +361,8 @@ contract LevelMinting is
 
         cooldowns[msg.sender][order.collateral_asset] = newCooldown;
 
+        pendingRedemptionlvlUSDAmounts[order.collateral_asset] += order.lvlusd_amount;
+
         // lock lvlUSD in this contract while user waits to redeem collateral
         lvlusd.transferFrom(
             order.benefactor,
@@ -374,7 +380,7 @@ contract LevelMinting is
 
     function completeRedeem(
         address token // collateral
-    ) external virtual ensureCooldownOn onlyRedeemerWhenEnabled {
+    ) external virtual onlyRedeemerWhenEnabled {
         UserCooldown memory userCooldown = cooldowns[msg.sender][token];
         if (block.timestamp >= userCooldown.cooldownStart + cooldownDuration) {
             userCooldown.cooldownStart = type(uint104).max;
@@ -385,6 +391,7 @@ contract LevelMinting is
             _redeem(_order);
             // burn user-provided lvlUSD that is locked in this contract
             lvlusd.burn(userCooldown.order.lvlusd_amount);
+            pendingRedemptionlvlUSDAmounts[userCooldown.order.collateral_asset] -= userCooldown.order.lvlusd_amount;
             emit RedeemCompleted(
                 msg.sender,
                 userCooldown.order.collateral_asset,
