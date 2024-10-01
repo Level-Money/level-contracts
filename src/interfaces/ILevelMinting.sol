@@ -52,6 +52,7 @@ interface ILevelMinting is ILevelMintingEvents {
     error InvalidAffirmedAmount();
     error InvalidAmount();
     error InvalidRoute();
+    error InvalidRatios();
     error UnsupportedAsset();
     error NoAssetsProvided();
     error InvalidCooldown();

@@ -175,6 +175,9 @@ contract LevelMinting is
 
         cooldownDuration = MAX_COOLDOWN_DURATION;
 
+        if (!verifyRatios(_ratios)){
+            revert InvalidRatios();
+        }
         _route = Route(_reserves, _ratios);
 
         emit lvlUSDSet(address(_lvlusd));
@@ -232,7 +235,8 @@ contract LevelMinting is
         if (msg.sender != order.benefactor) {
             revert MsgSenderIsNotBenefactor();
         }
-        _mint(order, _route);
+        Order memory _order = computeCollateralOrlvlUSDAmount(order);
+       _mint(_order, _route);
     }
 
     function setCooldownDuration(
@@ -348,7 +352,7 @@ contract LevelMinting is
     ) external ensureCooldownOn onlyRedeemerWhenEnabled {
         if (order.order_type != OrderType.REDEEM) revert InvalidOrder();
 
-        if (!_supportedAssets.contains(order.collateral_asset)) {
+        if (!_redeemableAssets.contains(order.collateral_asset)) {
             revert UnsupportedAsset();
         }
         if (msg.sender != order.benefactor) {
@@ -455,6 +459,13 @@ contract LevelMinting is
         emit AssetRemoved(asset);
     }
 
+    function removeRedeemableAssets(
+        address asset
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!_redeemableAssets.remove(asset)) revert InvalidAssetAddress();
+        emit RedeemableAssetRemoved(asset);
+    }
+
     /// @notice Checks if an asset is supported.
     function isSupportedAsset(address asset) external view returns (bool) {
         return _supportedAssets.contains(asset);
@@ -558,6 +569,14 @@ contract LevelMinting is
         return true;
     }
 
+    function verifyRatios(uint256[] memory ratios) public view returns (bool){
+        uint total = 0;
+        for (uint i = 0; i< ratios.length; i++){
+            total += ratios[i];
+        }
+        return total == 10_000;
+    }
+
     /// @notice assert validity of route object per type
     function verifyRoute(
         Route memory route,
@@ -567,7 +586,6 @@ contract LevelMinting is
         if (orderType == OrderType.REDEEM) {
             return true;
         }
-        uint256 totalRatio = 0;
         if (route.addresses.length != route.ratios.length) {
             return false;
         }
@@ -582,9 +600,8 @@ contract LevelMinting is
             ) {
                 return false;
             }
-            totalRatio += route.ratios[i];
         }
-        if (totalRatio != 10_000) {
+        if (!verifyRatios(route.ratios)) {
             return false;
         }
         return true;
@@ -616,6 +633,7 @@ contract LevelMinting is
                 "Reserve address not found in _reserveAddresses"
             );
         }
+        require(verifyRatios(_ratios), "ratios do not add up to 10,000");
         _route = Route(_reserves, _ratios);
     }
 

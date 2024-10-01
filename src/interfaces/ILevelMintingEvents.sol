@@ -37,6 +37,9 @@ interface ILevelMintingEvents {
     /// @notice Event emitted when a supported asset is removed
     event AssetRemoved(address indexed asset);
 
+    /// @notice Event emitted when a redeemable asset is removed
+    event RedeemableAssetRemoved(address indexed asset);
+
     // @notice Event emitted when a reserve address is added
     event ReserveAddressAdded(address indexed reserve);
 
