@@ -14,7 +14,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/IlvlUSD.sol";
 import "./interfaces/ILevelMinting.sol";
-import "forge-std/console.sol";
 
 /**
  * @title Level Minting Contract
@@ -64,10 +63,10 @@ contract LevelMinting is
     /// @notice max redeemed lvlUSD allowed per block
     uint256 public maxRedeemPerBlock;
 
-    bool public checkMinterRole = true;
-    bool public checkRedeemerRole = true;
+    bool public checkMinterRole = false;
+    bool public checkRedeemerRole = false;
 
-    uint24 public constant MAX_COOLDOWN_DURATION = 7 days;
+    uint24 public constant MAX_COOLDOWN_DURATION = 21 days;
     uint24 public cooldownDuration;
 
     mapping(address => mapping(address => UserCooldown)) public cooldowns;
@@ -173,7 +172,7 @@ contract LevelMinting is
             _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         }
 
-        cooldownDuration = MAX_COOLDOWN_DURATION;
+        cooldownDuration = 9 days;
 
         if (!verifyRatios(_ratios)) {
             revert InvalidRatios();
