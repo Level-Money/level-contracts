@@ -178,6 +178,7 @@ contract LevelMinting is
         if (!verifyRatios(_ratios)){
             revert InvalidRatios();
         }
+        require(_ratios.length == _reserves.length, "ratios and reserves must have same length");
         _route = Route(_reserves, _ratios);
 
         emit lvlUSDSet(address(_lvlusd));
