@@ -175,10 +175,13 @@ contract LevelMinting is
 
         cooldownDuration = MAX_COOLDOWN_DURATION;
 
-        if (!verifyRatios(_ratios)){
+        if (!verifyRatios(_ratios)) {
             revert InvalidRatios();
         }
-        require(_ratios.length == _reserves.length, "ratios and reserves must have same length");
+        require(
+            _ratios.length == _reserves.length,
+            "ratios and reserves must have same length"
+        );
         _route = Route(_reserves, _ratios);
 
         emit lvlUSDSet(address(_lvlusd));
@@ -237,13 +240,16 @@ contract LevelMinting is
             revert MsgSenderIsNotBenefactor();
         }
         Order memory _order = computeCollateralOrlvlUSDAmount(order);
-       _mint(_order, _route);
+        _mint(_order, _route);
     }
 
     function setCooldownDuration(
         uint24 newDuration
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newDuration <= MAX_COOLDOWN_DURATION, "newDuration exceeds MAX_COOLDOWN_DURATION");
+        require(
+            newDuration <= MAX_COOLDOWN_DURATION,
+            "newDuration exceeds MAX_COOLDOWN_DURATION"
+        );
         cooldownDuration = newDuration;
     }
 
@@ -366,7 +372,8 @@ contract LevelMinting is
 
         cooldowns[msg.sender][order.collateral_asset] = newCooldown;
 
-        pendingRedemptionlvlUSDAmounts[order.collateral_asset] += order.lvlusd_amount;
+        pendingRedemptionlvlUSDAmounts[order.collateral_asset] += order
+            .lvlusd_amount;
 
         // lock lvlUSD in this contract while user waits to redeem collateral
         lvlusd.transferFrom(
@@ -396,7 +403,9 @@ contract LevelMinting is
             _redeem(_order);
             // burn user-provided lvlUSD that is locked in this contract
             lvlusd.burn(userCooldown.order.lvlusd_amount);
-            pendingRedemptionlvlUSDAmounts[userCooldown.order.collateral_asset] -= userCooldown.order.lvlusd_amount;
+            pendingRedemptionlvlUSDAmounts[
+                userCooldown.order.collateral_asset
+            ] -= userCooldown.order.lvlusd_amount;
             emit RedeemCompleted(
                 msg.sender,
                 userCooldown.order.collateral_asset,
@@ -570,9 +579,9 @@ contract LevelMinting is
         return true;
     }
 
-    function verifyRatios(uint256[] memory ratios) public view returns (bool){
+    function verifyRatios(uint256[] memory ratios) public view returns (bool) {
         uint total = 0;
-        for (uint i = 0; i< ratios.length; i++){
+        for (uint i = 0; i < ratios.length; i++) {
             total += ratios[i];
         }
         return total == 10_000;
