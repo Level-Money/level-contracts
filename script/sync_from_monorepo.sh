@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Configuration
+# Add or remove directories to ignore in this array
+IGNORED_DIRS=(
+    "lib"
+    "broadcast"
+    "tmp"
+)
+
 # Function to show usage
 show_usage() {
     echo "Usage: $0 [-d] /path/to/monorepo"
@@ -57,8 +65,35 @@ perform_sync() {
         echo "Performing dry run. No changes will be made."
     fi
 
-    # Use rsync to copy/update files, but don't delete directories
-    rsync -av $dry_run_flag --update --exclude='.git' "$CONTRACTS_PATH/" ./
+    # Create a temporary file for rsync exclude patterns
+    EXCLUDE_FILE=$(mktemp)
+
+    # Add directories from IGNORED_DIRS to exclude file
+    for dir in "${IGNORED_DIRS[@]}"; do
+        echo "$dir/" >> "$EXCLUDE_FILE"
+    done
+
+    # Add .gitignore patterns to exclude file
+    if [ -f ".gitignore" ]; then
+        cat ".gitignore" >> "$EXCLUDE_FILE"
+    fi
+
+    # Use rsync to copy/update files, showing itemized changes
+    rsync -avi $dry_run_flag --update --exclude-from="$EXCLUDE_FILE" --itemize-changes "$CONTRACTS_PATH/" ./ | sed -E 's/^(.)(.)(.)(.)(.)(.)(....) (.*)/\1 \8/' | while read line; do
+        change=${line:0:1}
+        file=${line:2}
+        case $change in
+            ">") echo "+ $file" ;;  # New file
+            "<") echo "- $file" ;;  # Deleted file (shouldn't happen with our options)
+            "c") echo "~ $file" ;;  # Changed file
+            "h") echo "~ $file" ;;  # Hard link change
+            ".") ;;  # No change, don't output anything
+            *)   echo "$line" ;;  # Any other cases, just print the line as-is
+        esac
+    done
+
+    # Remove the temporary exclude file
+    rm "$EXCLUDE_FILE"
 
     if [ "$DRY_RUN" = false ]; then
         # Stage all changes
