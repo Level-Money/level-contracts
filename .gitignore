@@ -11,7 +11,8 @@ out/
 */dist/*
 
 # Docs
-docs/
+**/docs/
+!docs/
 
 # Dotenv file
 .env

@@ -6,6 +6,16 @@ IGNORED_DIRS=(
     "lib"
     "broadcast"
     "tmp"
+    ".git"
+    "integration_tests"
+    "docs"
+    "script"
+    ".gitmodules"
+)
+
+IGNORED_FILES=(
+    ".gitignore"
+    ".gitmodules"
 )
 
 # Function to show usage
@@ -73,20 +83,26 @@ perform_sync() {
         echo "$dir/" >> "$EXCLUDE_FILE"
     done
 
+    # Add files from IGNORED_FILES to exclude file
+    for file in "${IGNORED_FILES[@]}"; do
+        echo "$file" >> "$EXCLUDE_FILE"
+    done
+
     # Add .gitignore patterns to exclude file
     if [ -f ".gitignore" ]; then
         cat ".gitignore" >> "$EXCLUDE_FILE"
     fi
 
-    # Use rsync to copy/update files, showing itemized changes
-    rsync -avi $dry_run_flag --update --exclude-from="$EXCLUDE_FILE" --itemize-changes "$CONTRACTS_PATH/" ./ | sed -E 's/^(.)(.)(.)(.)(.)(.)(....) (.*)/\1 \8/' | while read line; do
+    # Use rsync with delete option to copy/update files and remove non-existent ones
+    rsync -avi $dry_run_flag --delete --exclude-from="$EXCLUDE_FILE" --itemize-changes "$CONTRACTS_PATH/" ./ | sed -E 's/^(.)(.)(.)(.)(.)(.)(....) (.*)/\1 \8/' | while read line; do
         change=${line:0:1}
         file=${line:2}
         case $change in
             ">") echo "+ $file" ;;  # New file
-            "<") echo "- $file" ;;  # Deleted file (shouldn't happen with our options)
+            "<") echo "- $file" ;;  # Deleted file
             "c") echo "~ $file" ;;  # Changed file
             "h") echo "~ $file" ;;  # Hard link change
+            "*") echo "- $file" ;;  # Deleted directory
             ".") ;;  # No change, don't output anything
             *)   echo "$line" ;;  # Any other cases, just print the line as-is
         esac
@@ -96,11 +112,15 @@ perform_sync() {
     rm "$EXCLUDE_FILE"
 
     if [ "$DRY_RUN" = false ]; then
-        # Stage all changes
+        # Stage all changes (including deletions)
         git add -A
 
         # Commit the changes
-        git commit -m "Sync changes from monorepo - $CURRENT_DATE"
+        commit_msg="Sync changes from monorepo - $CURRENT_DATE"
+        commit_msg+="\n\nSynchronized with monorepo, including removal of files/directories"
+        commit_msg+=" that no longer exist in the monorepo's contracts directory."
+        
+        git commit -m "$commit_msg"
 
         echo "Changes from monorepo have been copied to the new branch: $NEW_BRANCH"
         echo "Review the changes and then merge this branch if everything looks good."
